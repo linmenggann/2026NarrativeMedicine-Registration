@@ -807,38 +807,21 @@
     r.readAsDataURL(file);
   });
 
-  // 以 XHR 上傳並回報上傳進度（text/plain 避免 CORS 預檢）
-  // 判斷策略：
-  //   1) 能讀到伺服器回應 → 以真實回應為準（最佳）。
-  //   2) 讀不到回應、但檔案已完整上傳（upload 完成）→ 視為送出成功。
-  //      （常見於院內網路/防火牆阻擋 Google 回應網域 script.googleusercontent.com，
-  //        此時資料其實已送達後端並存檔，只是瀏覽器拿不到回應。）
-  //   只送出一次、不重送，故不會造成重複資料。
-  function postWithProgress(url, body){
-    return new Promise((resolve,reject)=>{
-      const xhr=new XMLHttpRequest();
-      let uploaded=false;
-      xhr.open('POST', url, true);
-      xhr.timeout=300000; // 5 分鐘
-      xhr.setRequestHeader('Content-Type','text/plain;charset=utf-8');
-      xhr.upload.onprogress=ev=>{
-        if(ev.lengthComputable) setProgress(ev.loaded/ev.total*100, `上傳中…（${Math.round(ev.loaded/ev.total*100)}%）`, false);
-      };
-      xhr.upload.onload=()=>{ uploaded=true; setProgress(100,'伺服器處理中（存檔至雲端）…',true); };
-      xhr.onload=()=>{
-        if(xhr.status>=200 && xhr.status<400){
-          try{ resolve(JSON.parse(xhr.responseText)); return; }catch(_){}
-        }
-        if(uploaded){ console.warn('[報名] 上傳已完成但無法讀取伺服器回應，視為送出成功（資料應已送達後端）。'); resolve({result:'success', _soft:true}); return; }
-        reject(new Error('伺服器回應異常（HTTP '+xhr.status+'）'));
-      };
-      xhr.onerror=()=>{
-        if(uploaded){ console.warn('[報名] 上傳已完成但連線回應被阻擋，視為送出成功（資料應已送達後端）。'); resolve({result:'success', _soft:true}); }
-        else reject(new Error('無法連線至報名伺服器'));
-      };
-      xhr.ontimeout=()=>{ uploaded ? resolve({result:'success', _soft:true}) : reject(new Error('連線逾時')); };
-      xhr.send(body);
-    });
+  // 送出報名（使用 fetch，重要！）
+  // 注意：若改用 XMLHttpRequest 並掛上 xhr.upload 進度事件，瀏覽器會把跨網域請求
+  //       升級為需「CORS 預檢（OPTIONS）」，而 Apps Script 不支援 OPTIONS，
+  //       會導致上傳階段直接失敗（upload.onerror）。
+  //       fetch 屬單純請求，可正常送出並讀取回應，故採用 fetch；
+  //       代價是無法回報上傳百分比，上傳階段改以不確定動畫顯示。
+  function postRegistration(url, body){
+    const ctrl=new AbortController();
+    const timer=setTimeout(()=>ctrl.abort(), 300000); // 5 分鐘逾時
+    return fetch(url,{
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:body,
+      signal:ctrl.signal
+    }).then(r=>r.json()).finally(()=>clearTimeout(timer));
   }
 
   // 送出成功後清空表單與已上傳檔案
@@ -924,8 +907,8 @@
         categories:cats.map(c=>CAT_FULL[c.k]),
         works
       };
-      setProgress(0,'開始上傳…',false);
-      const out=await postWithProgress(APPS_SCRIPT_URL, JSON.stringify(payload));
+      setProgress(100,'上傳中…請稍候（檔案較大時需多等一下）',true);
+      const out=await postRegistration(APPS_SCRIPT_URL, JSON.stringify(payload));
       if(out && out.result==='success'){
         setProgress(100,'完成',false);
         msg.className='msg ok';
