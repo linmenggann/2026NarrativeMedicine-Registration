@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 醫院敘事醫學系列競賽活動｜影像、敘事及書寫</title>
+<meta name="description" content="2026『醫院敘事醫學系列競賽活動』— 用影像捕捉醫療現場、用故事詮釋醫療人文、用文字留住生命光影。線上報名與投稿。">
+<style>
+  :root{
+    --teal:#0d7d7d;
+    --teal-dark:#075c5c;
+    --teal-light:#e6f4f4;
+    --coral:#e9694a;
+    --coral-light:#fbeae5;
+    --gold:#c79a3c;
+    --ink:#22343a;
+    --muted:#5d7178;
+    --paper:#fbfaf6;
+    --card:#ffffff;
+    --line:#e4ebec;
+    --shadow:0 10px 30px rgba(13,125,125,.10);
+    --shadow-lg:0 24px 60px rgba(13,125,125,.16);
+    --radius:18px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    color:var(--ink);
+    background:var(--paper);
+    line-height:1.85;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--teal);text-decoration:none}
+  img{max-width:100%}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+  section{padding:78px 0}
+  .eyebrow{
+    display:inline-block;font-size:.82rem;letter-spacing:3px;font-weight:700;
+    color:var(--coral);text-transform:uppercase;margin-bottom:14px;
+  }
+  h2.title{
+    font-size:clamp(1.7rem,3.6vw,2.5rem);font-weight:800;line-height:1.3;
+    letter-spacing:1px;margin-bottom:14px;
+  }
+  h2.title::after{
+    content:"";display:block;width:58px;height:4px;border-radius:4px;
+    background:linear-gradient(90deg,var(--teal),var(--coral));margin-top:18px;
+  }
+  .lead{color:var(--muted);font-size:1.05rem;max-width:760px;margin-bottom:8px}
+
+  /* scroll reveal */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+
+  /* ---------- NAV ---------- */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(251,250,246,.86);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.5px}
+  .brand .dot{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--coral));
+    display:grid;place-items:center;color:#fff;font-size:1rem}
+  .navlinks{display:flex;gap:26px;align-items:center}
+  .navlinks a{color:var(--muted);font-weight:600;font-size:.95rem}
+  .navlinks a:hover{color:var(--teal)}
+  .nav-cta{background:var(--coral);color:#fff!important;padding:9px 18px;border-radius:999px;
+    font-size:.9rem;box-shadow:0 6px 16px rgba(233,105,74,.3)}
+  .nav-cta:hover{background:#d8543a}
+  .burger{display:none;background:none;border:0;font-size:1.5rem;cursor:pointer;color:var(--ink)}
+  @media(max-width:780px){
+    .navlinks{display:none;position:absolute;top:64px;left:0;right:0;flex-direction:column;
+      gap:0;background:var(--paper);border-bottom:1px solid var(--line);padding:8px 0}
+    .navlinks.open{display:flex}
+    .navlinks a{padding:13px 22px;width:100%}
+    .nav-cta{margin:8px 22px;text-align:center}
+    .burger{display:block}
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;overflow:hidden;color:#fff;padding:96px 0 110px;
+    background:
+      radial-gradient(900px 500px at 80% -10%,rgba(233,105,74,.45),transparent 60%),
+      radial-gradient(700px 600px at -5% 110%,rgba(199,154,60,.35),transparent 55%),
+      linear-gradient(135deg,#0d7d7d 0%,#075c5c 100%);
+  }
+  .hero::after{
+    content:"";position:absolute;inset:0;opacity:.10;
+    background-image:radial-gradient(circle,#fff 1.2px,transparent 1.3px);
+    background-size:26px 26px;
+  }
+  .hero .wrap{position:relative;z-index:2}
+  .hero .badge{
+    display:inline-flex;gap:8px;align-items:center;background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.32);padding:7px 16px;border-radius:999px;
+    font-size:.85rem;font-weight:600;letter-spacing:1px;margin-bottom:24px;
+  }
+  .hero h1{
+    font-size:clamp(2rem,5.6vw,3.5rem);font-weight:900;line-height:1.22;letter-spacing:1px;
+  }
+  .hero h1 .accent{color:#ffd9a8}
+  .hero .sub{
+    margin-top:18px;font-size:clamp(1.05rem,2.4vw,1.4rem);font-weight:600;
+    color:#cdeaea;letter-spacing:2px;
+  }
+  .hero .desc{margin-top:22px;max-width:680px;color:#e7f5f5;font-size:1.05rem}
+  .hero .quote{margin-top:26px;font-style:italic;color:#ffe7cf;font-size:1.05rem}
+  .hero-btns{margin-top:38px;display:flex;gap:14px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:14px 28px;border-radius:999px;
+    font-weight:700;font-size:1rem;cursor:pointer;border:0;transition:.2s;letter-spacing:.5px}
+  .btn-primary{background:var(--coral);color:#fff;box-shadow:0 10px 26px rgba(233,105,74,.4)}
+  .btn-primary:hover{background:#d8543a;transform:translateY(-2px)}
+  .btn-ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.4)}
+  .btn-ghost:hover{background:rgba(255,255,255,.22)}
+  .hero-meta{margin-top:46px;display:flex;gap:34px;flex-wrap:wrap}
+  .hero-meta .m{display:flex;flex-direction:column}
+  .hero-meta .m b{font-size:1.5rem;font-weight:800;color:#fff}
+  .hero-meta .m span{font-size:.86rem;color:#bfe3e3;letter-spacing:1px}
+
+  /* ---------- CATEGORY CARDS ---------- */
+  #categories{background:var(--card)}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:42px}
+  @media(max-width:820px){.cards{grid-template-columns:1fr}}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:34px 28px;transition:.25s;position:relative;overflow:hidden;
+  }
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;
+    background:linear-gradient(90deg,var(--teal),var(--coral))}
+  .card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:transparent}
+  .card .ic{font-size:2.6rem;margin-bottom:16px;display:block}
+  .card h3{font-size:1.32rem;font-weight:800;margin-bottom:8px}
+  .card .tag{display:inline-block;background:var(--teal-light);color:var(--teal-dark);
+    font-size:.78rem;font-weight:700;padding:4px 12px;border-radius:999px;margin-bottom:14px}
+  .card p{color:var(--muted);font-size:.96rem}
+  .card .fmt{margin-top:16px;padding-top:16px;border-top:1px dashed var(--line);
+    font-size:.9rem;color:var(--ink)}
+  .card .fmt b{color:var(--teal-dark)}
+
+  /* ---------- THEMES ---------- */
+  #themes{background:linear-gradient(180deg,var(--teal-light),var(--paper))}
+  .theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:40px}
+  @media(max-width:680px){.theme-grid{grid-template-columns:1fr}}
+  .theme{display:flex;gap:14px;align-items:flex-start;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:18px 20px;transition:.2s}
+  .theme:hover{box-shadow:var(--shadow);border-color:var(--teal)}
+  .theme .n{flex:0 0 34px;height:34px;border-radius:9px;background:var(--coral-light);
+    color:var(--coral);font-weight:800;display:grid;place-items:center;font-size:.95rem}
+  .theme p{font-weight:600;color:var(--ink);font-size:.98rem;line-height:1.6}
+
+  /* ---------- INFO / GUIDELINES ---------- */
+  #info{background:var(--card)}
+  .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;margin-top:42px}
+  @media(max-width:780px){.info-grid{grid-template-columns:1fr}}
+  .info-box{border:1px solid var(--line);border-radius:var(--radius);padding:28px 26px;background:var(--paper)}
+  .info-box h4{font-size:1.12rem;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+  .info-box h4 .ico{width:34px;height:34px;border-radius:9px;background:var(--teal);color:#fff;
+    display:grid;place-items:center;font-size:1rem}
+  .info-box ul{list-style:none}
+  .info-box li{padding:7px 0 7px 22px;position:relative;color:var(--muted);font-size:.96rem;border-bottom:1px dashed var(--line)}
+  .info-box li:last-child{border-bottom:0}
+  .info-box li::before{content:"▹";position:absolute;left:0;color:var(--coral);font-weight:700}
+  .info-box li b{color:var(--ink)}
+  .highlight-strip{margin-top:26px;background:linear-gradient(135deg,var(--coral),#d8543a);
+    color:#fff;border-radius:var(--radius);padding:26px 30px;display:flex;flex-wrap:wrap;
+    gap:24px;justify-content:space-between;align-items:center;box-shadow:0 14px 34px rgba(233,105,74,.3)}
+  .highlight-strip .hs{display:flex;flex-direction:column}
+  .highlight-strip .hs span{font-size:.85rem;opacity:.9;letter-spacing:1px}
+  .highlight-strip .hs b{font-size:1.45rem;font-weight:800}
+
+  /* ---------- JUDGING ---------- */
+  #judging{background:linear-gradient(180deg,var(--paper),var(--teal-light))}
+  .criteria{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:42px}
+  @media(max-width:780px){.criteria{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:440px){.criteria{grid-template-columns:1fr}}
+  .crit{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:26px 22px;text-align:center;transition:.2s}
+  .crit:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+  .crit .pct{font-size:2.2rem;font-weight:900;color:var(--teal);line-height:1}
+  .crit h5{font-size:1.05rem;font-weight:800;margin:12px 0 6px}
+  .crit p{font-size:.88rem;color:var(--muted)}
+  .bar{height:8px;border-radius:8px;background:var(--teal-light);margin-top:16px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,var(--teal),var(--coral))}
+  .ai-note{margin-top:26px;background:var(--card);border:1.5px dashed var(--gold);border-radius:14px;
+    padding:18px 24px;color:var(--ink);font-weight:600;display:flex;gap:12px;align-items:center}
+  .ai-note .ic{font-size:1.6rem}
+
+  /* ---------- AWARDS ---------- */
+  #awards{background:var(--card)}
+  .award-tabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:38px;margin-bottom:26px}
+  .award-tabs button{border:1px solid var(--line);background:var(--paper);padding:11px 22px;
+    border-radius:999px;font-weight:700;cursor:pointer;color:var(--muted);font-size:.96rem;transition:.2s;font-family:inherit}
+  .award-tabs button.active{background:var(--teal);color:#fff;border-color:var(--teal);box-shadow:0 8px 20px rgba(13,125,125,.3)}
+  .award-panel{display:none;animation:fade .35s ease}
+  .award-panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .tbl{width:100%;border-collapse:collapse;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--teal);color:#fff;padding:15px;font-weight:700;font-size:.95rem;text-align:left}
+  .tbl td{padding:14px 15px;border-bottom:1px solid var(--line);font-size:.96rem}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl .rank{font-weight:800;color:var(--ink)}
+  .tbl .money{font-weight:800;color:var(--coral)}
+  .tbl .special td{background:var(--gold)!important;color:#fff}
+  .tbl .special .money{color:#fff}
+  @media(max-width:560px){.tbl th,.tbl td{padding:10px 8px;font-size:.85rem}}
+
+  /* ---------- REGISTRATION FORM ---------- */
+  #register{background:linear-gradient(160deg,#075c5c,#0d7d7d);color:#fff;position:relative;overflow:hidden}
+  #register::after{content:"";position:absolute;inset:0;opacity:.07;
+    background-image:radial-gradient(circle,#fff 1.2px,transparent 1.3px);background-size:24px 24px}
+  #register .wrap{position:relative;z-index:2}
+  #register h2.title{color:#fff}
+  #register .eyebrow{color:#ffd9a8}
+  #register .lead{color:#cdeaea}
+  .form-card{background:#fff;color:var(--ink);border-radius:24px;padding:42px;margin-top:42px;
+    box-shadow:var(--shadow-lg)}
+  @media(max-width:560px){.form-card{padding:26px 20px}}
+  .fld{margin-bottom:22px}
+  .fld label{display:block;font-weight:700;margin-bottom:8px;font-size:.96rem}
+  .fld label .req{color:var(--coral)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:560px){.row2{grid-template-columns:1fr}}
+  input[type=text],input[type=email],input[type=tel],textarea,select{
+    width:100%;padding:13px 15px;border:1.5px solid var(--line);border-radius:12px;
+    font-size:1rem;font-family:inherit;background:var(--paper);transition:.2s;color:var(--ink)}
+  input:focus,textarea:focus,select:focus{outline:0;border-color:var(--teal);background:#fff;
+    box-shadow:0 0 0 4px var(--teal-light)}
+  textarea{resize:vertical;min-height:90px}
+  .cat-block{border:1.5px solid var(--line);border-radius:16px;padding:6px 20px 20px;margin-bottom:16px;transition:.25s}
+  .cat-block.on{border-color:var(--teal);background:var(--teal-light)}
+  .cat-head{display:flex;align-items:center;gap:12px;padding:16px 0;cursor:pointer;font-weight:800;font-size:1.05rem}
+  .cat-head input{width:20px;height:20px;accent-color:var(--teal);cursor:pointer}
+  .cat-head .ci{font-size:1.4rem}
+  .cat-head small{font-weight:500;color:var(--muted);font-size:.84rem;margin-left:auto}
+  .cat-body{display:none;padding-top:6px}
+  .cat-block.on .cat-body{display:block}
+  .ai-row{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:.92rem}
+  .ai-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--gold)}
+  .ai-name{display:none;margin-top:10px}
+  .ai-name.show{display:block}
+  .form-note{font-size:.86rem;color:var(--muted);margin-top:6px}
+  .submit-row{margin-top:30px;text-align:center}
+  .btn-submit{background:var(--coral);color:#fff;padding:16px 50px;font-size:1.1rem;border-radius:999px;
+    border:0;font-weight:800;cursor:pointer;box-shadow:0 12px 30px rgba(233,105,74,.4);transition:.2s;font-family:inherit;letter-spacing:1px}
+  .btn-submit:hover{background:#d8543a;transform:translateY(-2px)}
+  .upload-hint{margin-top:22px;background:var(--coral-light);border-radius:14px;padding:18px 22px;
+    font-size:.92rem;color:#9c3c25;border:1px solid #f3c9bd}
+  .upload-hint b{color:#7d2d18}
+  .msg{margin-top:18px;padding:16px 20px;border-radius:12px;font-weight:700;display:none}
+  .msg.ok{display:block;background:var(--teal-light);color:var(--teal-dark);border:1px solid var(--teal)}
+  .msg.err{display:block;background:var(--coral-light);color:#9c3c25;border:1px solid var(--coral)}
+
+  /* ---------- CONTACT / FOOTER ---------- */
+  #contact{background:var(--card)}
+  .contact-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:30px;margin-top:42px}
+  @media(max-width:780px){.contact-grid{grid-template-columns:1fr}}
+  .contact-card{border:1px solid var(--line);border-radius:var(--radius);padding:30px;background:var(--paper)}
+  .contact-card h4{font-size:1.15rem;font-weight:800;margin-bottom:18px}
+  .ci-line{display:flex;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);align-items:center}
+  .ci-line:last-child{border-bottom:0}
+  .ci-line .ic{width:42px;height:42px;flex:0 0 42px;border-radius:11px;background:var(--teal-light);
+    color:var(--teal);display:grid;place-items:center;font-size:1.2rem}
+  .ci-line .t span{display:block;font-size:.8rem;color:var(--muted);letter-spacing:1px}
+  .ci-line .t b{font-size:1.02rem;color:var(--ink)}
+  .deadline-card{background:linear-gradient(135deg,var(--coral),#d8543a);color:#fff;border-radius:var(--radius);
+    padding:34px 30px;display:flex;flex-direction:column;justify-content:center;text-align:center;
+    box-shadow:0 16px 40px rgba(233,105,74,.3)}
+  .deadline-card .lbl{font-size:.9rem;letter-spacing:3px;opacity:.92}
+  .deadline-card .big{font-size:2.6rem;font-weight:900;margin:8px 0;line-height:1.1}
+  .deadline-card .sm{font-size:1rem;opacity:.95}
+  footer{background:var(--ink);color:#cfdcdd;padding:40px 0;text-align:center}
+  footer .ftitle{font-weight:800;color:#fff;font-size:1.1rem;margin-bottom:8px}
+  footer p{font-size:.9rem;opacity:.85;margin:4px 0}
+  footer .heart{color:var(--coral)}
+
+  .back-top{position:fixed;right:22px;bottom:22px;width:48px;height:48px;border-radius:50%;
+    background:var(--teal);color:#fff;border:0;font-size:1.3rem;cursor:pointer;display:none;
+    box-shadow:var(--shadow-lg);z-index:40}
+  .back-top.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <div class="brand"><span class="dot">敘</span> 2026 敘事醫學競賽</div>
+    <button class="burger" id="burger" aria-label="選單">☰</button>
+    <nav class="navlinks" id="navlinks">
+      <a href="#categories">競賽類別</a>
+      <a href="#themes">徵稿主題</a>
+      <a href="#info">參賽說明</a>
+      <a href="#awards">獎項</a>
+      <a href="#contact">聯絡</a>
+      <a href="#register" class="nav-cta">立即報名</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <span class="badge">🏥 奇美醫療體系 ・ 教學部主辦</span>
+    <h1>2026『醫院敘事醫學<br>系列競賽活動』<br><span class="accent">影像、敘事及書寫</span></h1>
+    <p class="sub">用影像捕捉醫療現場 ・ 用故事詮釋醫療人文 ・ 用文字留住生命光影</p>
+    <p class="desc">敘事醫學（Narrative Medicine）強調透過故事、影像與文字的表達，深化醫療專業的溫度，讓醫療現場充滿人文關懷。誠摯邀請你用照片、影片與文字，紀錄醫療世界的溫暖與感動！</p>
+    <p class="quote">「你是否曾被病人的一句話觸動？是否曾在醫療現場見證動人的瞬間？」</p>
+    <div class="hero-btns">
+      <a href="#register" class="btn btn-primary">✍️ 立即報名投稿</a>
+      <a href="#info" class="btn btn-ghost">📜 參賽辦法</a>
+    </div>
+    <div class="hero-meta">
+      <div class="m"><b>3 大</b><span>競賽類別</span></div>
+      <div class="m"><b>$10,000</b><span>最高獎金</span></div>
+      <div class="m"><b id="heroCountdown">—</b><span>距截稿剩餘</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section id="categories">
+  <div class="wrap reveal">
+    <span class="eyebrow">Competition Categories</span>
+    <h2 class="title">📌 競賽類別</h2>
+    <p class="lead">主題《醫療的瞬間・永恆的感動》，三大類別任你發揮，可複選參賽。</p>
+    <div class="cards">
+      <div class="card">
+        <span class="ic">🎬</span>
+        <span class="tag">短影音</span>
+        <h3>醫療人文短影音</h3>
+        <p>以 60 秒內的影像，展現醫療人文的力量。內容可為紀錄、微電影、動畫等。</p>
+        <div class="fmt"><b>格式：</b>MP4，60 秒內，需附 100 字內簡介。</div>
+      </div>
+      <div class="card">
+        <span class="ic">📷</span>
+        <span class="tag">攝影</span>
+        <h3>醫療人文攝影</h3>
+        <p>用一張照片，捕捉醫療現場中觸動人心的瞬間與人性光輝。</p>
+        <div class="fmt"><b>格式：</b>JPEG，需附作品名稱與 100–200 字文字說明。</div>
+      </div>
+      <div class="card">
+        <span class="ic">📖</span>
+        <span class="tag">徵文</span>
+        <h3>敘事醫學徵文</h3>
+        <p>用文字書寫你的醫療故事，記錄醫病之間的生命交會與感動。</p>
+        <div class="fmt"><b>格式：</b>1,500–3,000 字，附標題與 200 字內簡介。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THEMES -->
+<section id="themes">
+  <div class="wrap reveal">
+    <span class="eyebrow">Themes</span>
+    <h2 class="title">📍 徵稿主題</h2>
+    <p class="lead">凡符合醫療人文精神的內容皆可參賽，以下為建議方向：</p>
+    <div class="theme-grid">
+      <div class="theme"><span class="n">1</span><p>醫病關係與生命故事</p></div>
+      <div class="theme"><span class="n">2</span><p>醫療現場的人文關懷</p></div>
+      <div class="theme"><span class="n">3</span><p>照護過程的感動時刻</p></div>
+      <div class="theme"><span class="n">4</span><p>醫療環境中的人性光輝</p></div>
+      <div class="theme"><span class="n">5</span><p>醫療專業者的內心世界（挑戰、情感、學習與成長）</p></div>
+      <div class="theme"><span class="n">6</span><p>病患與家屬的醫療旅程</p></div>
+      <div class="theme"><span class="n">7</span><p>敘事醫學的實踐與影響</p></div>
+      <div class="theme"><span class="n">8</span><p>其他符合醫療人文精神的內容</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- INFO -->
+<section id="info">
+  <div class="wrap reveal">
+    <span class="eyebrow">Guidelines</span>
+    <h2 class="title">📜 參賽說明</h2>
+    <p class="lead">參賽前請詳閱參賽資格、作品格式與投稿方式。</p>
+    <div class="info-grid">
+      <div class="info-box">
+        <h4><span class="ico">👥</span> 參賽資格</h4>
+        <ul>
+          <li><b>奇美醫療體系同仁</b>皆可參加。</li>
+          <li>可同時參加多個類別（複選），請檢附對應報名文件。</li>
+        </ul>
+      </div>
+      <div class="info-box">
+        <h4><span class="ico">📂</span> 作品格式</h4>
+        <ul>
+          <li>🎬 <b>短影音</b>：60 秒內、MP4，附 100 字內簡介。</li>
+          <li>📷 <b>攝影</b>：JPEG，附作品名稱與 100–200 字說明。</li>
+          <li>📖 <b>徵文</b>：1,500–3,000 字，附標題與 200 字內簡介。</li>
+        </ul>
+      </div>
+      <div class="info-box">
+        <h4><span class="ico">📤</span> 投稿方式</h4>
+        <ul>
+          <li>線上填寫報名資料（見下方報名表）。</li>
+          <li>作品上傳至信箱：<b>910632@mail.chimei.org.tw</b></li>
+        </ul>
+      </div>
+      <div class="info-box">
+        <h4><span class="ico">🏛️</span> 主辦資訊</h4>
+        <ul>
+          <li><b>主辦單位：</b>教學部</li>
+          <li><b>得獎展覽：</b>於醫教會會議授獎表揚，公開展覽至奇美暖心角，並刊登於教師培育中心網頁。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="highlight-strip">
+      <div class="hs"><span>📅 徵稿日期</span><b>即日起 ～ 115 年 7 月 15 日（三）止</b></div>
+      <div class="hs"><span>📧 作品上傳信箱</span><b>910632@mail.chimei.org.tw</b></div>
+      <a href="#register" class="btn btn-ghost" style="border-color:#fff">前往報名 →</a>
+    </div>
+  </div>
+</section>
+
+<!-- JUDGING -->
+<section id="judging">
+  <div class="wrap reveal">
+    <span class="eyebrow">Evaluation</span>
+    <h2 class="title">🎖 評選與獎勵</h2>
+    <p class="lead">評審依下列四項標準綜合評分：</p>
+    <div class="criteria">
+      <div class="crit">
+        <div class="pct">40%</div>
+        <h5>主題契合度</h5>
+        <p>作品是否能表達醫療人文的核心精神。</p>
+        <div class="bar"><i style="width:100%"></i></div>
+      </div>
+      <div class="crit">
+        <div class="pct">30%</div>
+        <h5>敘事表達力</h5>
+        <p>故事、影像或文字的表達是否真實動人、引人共鳴。</p>
+        <div class="bar"><i style="width:75%"></i></div>
+      </div>
+      <div class="crit">
+        <div class="pct">20%</div>
+        <h5>創意與獨特性</h5>
+        <p>內容是否富有創新視角與新穎的表現手法。</p>
+        <div class="bar"><i style="width:50%"></i></div>
+      </div>
+      <div class="crit">
+        <div class="pct">10%</div>
+        <h5>技術表現</h5>
+        <p>影像構圖、剪輯等技術表現（攝影／影片適用）。</p>
+        <div class="bar"><i style="width:25%"></i></div>
+      </div>
+    </div>
+    <div class="ai-note">
+      <span class="ic">🤖</span>
+      <span>影像類（短影音、攝影）以 <b>AI 協助製作</b>者，可另評選 <b>特別獎</b>（獎金 3,000 元，數名）。報名時請註明使用之程式／網站名稱。</span>
+    </div>
+  </div>
+</section>
+
+<!-- AWARDS -->
+<section id="awards">
+  <div class="wrap reveal">
+    <span class="eyebrow">Prizes</span>
+    <h2 class="title">🏆 各類獎項：獎金＋獎狀</h2>
+    <p class="lead">點選下方類別查看完整獎項與獎金。得獎作品將於醫教會會議授獎表揚並公開展覽。</p>
+    <div class="award-tabs">
+      <button class="active" data-tab="v">🎬 醫療人文短影音</button>
+      <button data-tab="p">📷 醫療人文攝影</button>
+      <button data-tab="w">📖 敘事醫學徵文</button>
+    </div>
+
+    <div class="award-panel active" id="tab-v">
+      <table class="tbl">
+        <thead><tr><th>名次</th><th>獎金（元）</th><th>名額</th><th>備註</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">🥇 第一名</td><td class="money">10,000</td><td>1</td><td>—</td></tr>
+          <tr><td class="rank">🥈 第二名</td><td class="money">7,000</td><td>2</td><td>—</td></tr>
+          <tr><td class="rank">🥉 第三名</td><td class="money">5,000</td><td>3</td><td>—</td></tr>
+          <tr><td class="rank">佳作</td><td class="money">2,000</td><td>數名</td><td>依投稿數調整</td></tr>
+          <tr class="special"><td class="rank">🤖 特別獎（AI 協作）</td><td class="money">3,000</td><td>數名</td><td>依投稿數調整</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="award-panel" id="tab-p">
+      <table class="tbl">
+        <thead><tr><th>名次</th><th>獎金（元）</th><th>名額</th><th>備註</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">🥇 第一名</td><td class="money">7,000</td><td>1</td><td>—</td></tr>
+          <tr><td class="rank">🥈 第二名</td><td class="money">5,000</td><td>1</td><td>—</td></tr>
+          <tr><td class="rank">🥉 第三名</td><td class="money">3,000</td><td>1</td><td>—</td></tr>
+          <tr><td class="rank">佳作</td><td class="money">1,000</td><td>數名</td><td>依投稿數調整</td></tr>
+          <tr class="special"><td class="rank">🤖 特別獎（AI 協作）</td><td class="money">3,000</td><td>數名</td><td>依投稿數調整</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="award-panel" id="tab-w">
+      <table class="tbl">
+        <thead><tr><th>名次</th><th>獎金（元）</th><th>名額</th><th>備註</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">🥇 第一名</td><td class="money">10,000</td><td>1</td><td>—</td></tr>
+          <tr><td class="rank">🥈 第二名</td><td class="money">7,000</td><td>2</td><td>—</td></tr>
+          <tr><td class="rank">🥉 第三名</td><td class="money">5,000</td><td>3</td><td>—</td></tr>
+          <tr><td class="rank">佳作</td><td class="money">2,000</td><td>數名</td><td>依投稿數調整</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- REGISTER -->
+<section id="register">
+  <div class="wrap">
+    <span class="eyebrow">Registration</span>
+    <h2 class="title">📣 線上報名表</h2>
+    <p class="lead">填寫以下資料完成報名。送出後，請再將作品檔案寄至 910632@mail.chimei.org.tw。</p>
+
+    <form class="form-card" id="regForm" novalidate>
+      <div class="row2">
+        <div class="fld">
+          <label>投稿者姓名 <span class="req">*</span></label>
+          <input type="text" name="name" required placeholder="請輸入姓名">
+        </div>
+        <div class="fld">
+          <label>服務單位 <span class="req">*</span></label>
+          <input type="text" name="unit" required placeholder="例：教學部">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fld">
+          <label>聯絡電話 / 分機 <span class="req">*</span></label>
+          <input type="tel" name="phone" required placeholder="例：分機 57440">
+        </div>
+        <div class="fld">
+          <label>E-mail <span class="req">*</span></label>
+          <input type="email" name="email" required placeholder="name@mail.chimei.org.tw">
+        </div>
+      </div>
+
+      <div class="fld">
+        <label>參賽類別 <span class="req">*</span>（請勾選，可複選並填寫對應作品資訊）</label>
+
+        <!-- 短影音 -->
+        <div class="cat-block" data-cat="v">
+          <label class="cat-head">
+            <input type="checkbox" name="cat_v">
+            <span class="ci">🎬</span> 醫療人文短影音
+            <small>60 秒內，MP4，附 100 字內簡介</small>
+          </label>
+          <div class="cat-body">
+            <div class="fld"><label>作品名稱</label><input type="text" name="v_title" placeholder="作品名稱"></div>
+            <div class="fld"><label>文字說明（100 字內）</label><textarea name="v_desc" maxlength="120" placeholder="簡述作品內容"></textarea></div>
+            <label class="ai-row"><input type="checkbox" name="v_ai" class="ai-toggle"> 以 AI 協作</label>
+            <div class="ai-name"><input type="text" name="v_ai_name" placeholder="程式／網站名稱"></div>
+          </div>
+        </div>
+
+        <!-- 攝影 -->
+        <div class="cat-block" data-cat="p">
+          <label class="cat-head">
+            <input type="checkbox" name="cat_p">
+            <span class="ci">📷</span> 醫療人文攝影
+            <small>JPEG，附作品名稱與 100–200 字說明</small>
+          </label>
+          <div class="cat-body">
+            <div class="fld"><label>作品名稱</label><input type="text" name="p_title" placeholder="作品名稱"></div>
+            <div class="fld"><label>文字說明（100–200 字）</label><textarea name="p_desc" maxlength="220" placeholder="作品說明"></textarea></div>
+            <label class="ai-row"><input type="checkbox" name="p_ai" class="ai-toggle"> 以 AI 協作</label>
+            <div class="ai-name"><input type="text" name="p_ai_name" placeholder="程式／網站名稱"></div>
+          </div>
+        </div>
+
+        <!-- 徵文 -->
+        <div class="cat-block" data-cat="w">
+          <label class="cat-head">
+            <input type="checkbox" name="cat_w">
+            <span class="ci">📖</span> 醫療人文敘事醫學徵文
+            <small>1,500–3,000 字，附標題與 200 字內簡介</small>
+          </label>
+          <div class="cat-body">
+            <div class="fld"><label>主題 / 標題</label><input type="text" name="w_title" placeholder="文章標題"></div>
+            <div class="fld"><label>簡介（200 字內）</label><textarea name="w_desc" maxlength="220" placeholder="文章簡介"></textarea></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="upload-hint">
+        📎 <b>作品上傳提醒：</b>完成線上報名後，請務必將作品檔案（影片 / 照片 / 文稿）以電子郵件寄送至 <b>910632@mail.chimei.org.tw</b>，並於信件主旨註明「敘事醫學競賽＋姓名＋類別」。
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="btn-submit">✉️ 送出報名</button>
+      </div>
+      <div class="msg" id="formMsg"></div>
+    </form>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="wrap reveal">
+    <span class="eyebrow">Contact</span>
+    <h2 class="title">📞 聯絡方式</h2>
+    <p class="lead">想參加嗎？立即投稿，讓你的故事觸動更多人！若有問題歡迎洽詢。</p>
+    <div class="contact-grid">
+      <div class="contact-card">
+        <h4>承辦窗口</h4>
+        <div class="ci-line">
+          <span class="ic">🏛️</span>
+          <div class="t"><span>主辦單位</span><b>教學部</b></div>
+        </div>
+        <div class="ci-line">
+          <span class="ic">👤</span>
+          <div class="t"><span>聯絡人</span><b>林盟淦　教學行政管理員</b></div>
+        </div>
+        <div class="ci-line">
+          <span class="ic">☎️</span>
+          <div class="t"><span>分機</span><b>57440</b></div>
+        </div>
+        <div class="ci-line">
+          <span class="ic">📧</span>
+          <div class="t"><span>E-mail / 作品上傳</span><b><a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a></b></div>
+        </div>
+        <div class="ci-line">
+          <span class="ic">ℹ️</span>
+          <div class="t"><span>更多資訊</span><b>活動詳情請見醫院公告或官方網站</b></div>
+        </div>
+      </div>
+      <div class="deadline-card">
+        <div class="lbl">截 稿 倒 數</div>
+        <div class="big" id="countdown">—</div>
+        <div class="sm">即日起 ～ 115 年 7 月 15 日（星期三）止</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="ftitle">2026『醫院敘事醫學系列競賽活動』</div>
+    <p>影像、敘事及書寫 ・ 主題《醫療的瞬間・永恆的感動》</p>
+    <p>主辦單位：奇美醫療體系 教學部　｜　聯絡：林盟淦（分機 57440）910632@mail.chimei.org.tw</p>
+    <p style="margin-top:14px">✨ 我們期待你的作品，讓醫療世界更加溫暖 <span class="heart">♥</span> ✨</p>
+  </div>
+</footer>
+
+<button class="back-top" id="backTop" aria-label="回到頂部">↑</button>
+
+<script>
+  // mobile nav
+  const burger=document.getElementById('burger'), nav=document.getElementById('navlinks');
+  burger.addEventListener('click',()=>nav.classList.toggle('open'));
+  nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>nav.classList.remove('open')));
+
+  // award tabs
+  document.querySelectorAll('.award-tabs button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.award-tabs button').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.award-panel').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+    });
+  });
+
+  // category expand on checkbox
+  document.querySelectorAll('.cat-block').forEach(block=>{
+    const cb=block.querySelector('.cat-head input[type=checkbox]');
+    cb.addEventListener('change',()=>block.classList.toggle('on',cb.checked));
+  });
+  // AI协作 name toggle
+  document.querySelectorAll('.ai-toggle').forEach(t=>{
+    t.addEventListener('change',()=>{
+      t.closest('.cat-body').querySelector('.ai-name').classList.toggle('show',t.checked);
+    });
+  });
+
+  // form submit -> compose mailto
+  const form=document.getElementById('regForm'), msg=document.getElementById('formMsg');
+  form.addEventListener('submit',e=>{
+    e.preventDefault();
+    const f=form;
+    const get=n=>(f[n]&&f[n].value||'').trim();
+    if(!get('name')||!get('unit')||!get('phone')||!get('email')){
+      msg.className='msg err'; msg.textContent='⚠️ 請完整填寫姓名、服務單位、聯絡電話與 E-mail。'; return;
+    }
+    const cats=[];
+    if(f.cat_v.checked)cats.push('短影音'); if(f.cat_p.checked)cats.push('攝影'); if(f.cat_w.checked)cats.push('徵文');
+    if(!cats.length){
+      msg.className='msg err'; msg.textContent='⚠️ 請至少勾選一項參賽類別。'; return;
+    }
+    let body=`【2026 敘事醫學競賽 線上報名】%0D%0A%0D%0A`;
+    body+=`投稿者：${get('name')}%0D%0A服務單位：${get('unit')}%0D%0A聯絡電話：${get('phone')}%0D%0AE-mail：${get('email')}%0D%0A%0D%0A參賽類別：${cats.join('、')}%0D%0A`;
+    if(f.cat_v.checked){body+=`%0D%0A[短影音] 作品名稱：${get('v_title')}　說明：${get('v_desc')}　${f.v_ai.checked?'(AI協作:'+get('v_ai_name')+')':''}%0D%0A`;}
+    if(f.cat_p.checked){body+=`%0D%0A[攝影] 作品名稱：${get('p_title')}　說明：${get('p_desc')}　${f.p_ai.checked?'(AI協作:'+get('p_ai_name')+')':''}%0D%0A`;}
+    if(f.cat_w.checked){body+=`%0D%0A[徵文] 標題：${get('w_title')}　簡介：${get('w_desc')}%0D%0A`;}
+    body+=`%0D%0A※ 請記得另將作品檔案附加於本郵件後寄出。`;
+    const subject=encodeURIComponent(`敘事醫學競賽報名_${get('name')}_${cats.join('+')}`);
+    msg.className='msg ok';
+    msg.innerHTML='✅ 報名資料已準備完成！系統正開啟您的郵件程式，請<b>附上作品檔案</b>後寄出至 910632@mail.chimei.org.tw。';
+    window.location.href=`mailto:910632@mail.chimei.org.tw?subject=${subject}&body=${body}`;
+  });
+
+  // countdown (deadline 115/07/15 = 2026/07/15)
+  const deadline=new Date('2026-07-15T23:59:59+08:00');
+  function tick(){
+    const d=Math.ceil((deadline-new Date())/86400000);
+    const txt = d>0? `還剩 ${d} 天` : (d===0?'最後一天':'已截止');
+    const big=document.getElementById('countdown'); if(big) big.textContent=txt;
+    const hero=document.getElementById('heroCountdown');
+    if(hero) hero.textContent = d>0? `${d} 天` : (d===0?'最後一天':'已截止');
+  }
+  tick(); setInterval(tick,3600000);
+
+  // scroll reveal
+  const io=new IntersectionObserver((entries)=>{
+    entries.forEach(en=>{ if(en.isIntersecting){en.target.classList.add('in'); io.unobserve(en.target);} });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // back to top
+  const bt=document.getElementById('backTop');
+  window.addEventListener('scroll',()=>bt.classList.toggle('show',scrollY>600));
+  bt.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
+</script>
+</body>
+</html>
