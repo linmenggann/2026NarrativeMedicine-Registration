@@ -60,6 +60,19 @@ function doGet() {
   return json_({ result: 'ok', message: '2026 敘事醫學競賽報名 API 運作中' });
 }
 
+/**
+ * 【部署後請先在編輯器執行這個函式一次】
+ * 用途：觸發「對外連線（UrlFetchApp）」與「雲端硬碟（Drive）」權限的授權同意視窗。
+ * 執行 → 點「檢閱權限」→ 選帳號 →（若提示未驗證：進階→前往專案）→ 允許。
+ * 完成後正式網頁即可申請上傳網址、上傳大檔案，不需再重新部署。
+ */
+function authorize() {
+  UrlFetchApp.fetch('https://www.googleapis.com/discovery/v1/apis', { muteHttpExceptions: true });
+  DriveApp.getRootFolder();
+  Logger.log('授權完成：已具備對外連線與 Drive 權限。');
+  return 'OK';
+}
+
 // ===================== A. 申請可續傳上傳網址 =====================
 
 function initUpload_(data) {
