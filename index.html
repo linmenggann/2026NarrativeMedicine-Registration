@@ -865,6 +865,19 @@
       msg.className='msg err'; msg.textContent=`⚠️ 請上傳「${missing.join('、')}」的作品檔案。`;
       msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
+    // 檔案大小檢查（線上上傳單次上限約 50MB，預留編碼膨脹空間）
+    const MAX_FILE=35*1024*1024, MAX_TOTAL=45*1024*1024;
+    const mb=b=>(b/1048576).toFixed(1)+'MB';
+    let totalBytes=0; const tooBig=[];
+    cats.forEach(c=>(stores[c.k]||[]).forEach(file=>{ totalBytes+=file.size; if(file.size>MAX_FILE) tooBig.push(`${file.name}（${mb(file.size)}）`); }));
+    if(tooBig.length || totalBytes>MAX_TOTAL){
+      console.warn('[檔案過大]', {totalBytes, tooBig});
+      msg.className='msg err';
+      msg.innerHTML='⚠️ <b>作品檔案太大，無法線上上傳</b>（單檔上限約 35MB、全部合計約 45MB；目前合計 '+mb(totalBytes)+'）。'
+        +(tooBig.length?('<br>過大檔案：'+tooBig.join('、')+'。'):'')
+        +'<br>請將影片／照片壓縮後再上傳；若無法壓縮，請聯絡承辦人協助投稿：教學部　林盟淦（分機 <b>57440</b>）　E-mail：<a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a>。';
+      msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
+    }
     if(!APPS_SCRIPT_URL){
       console.error('[設定錯誤] 尚未設定 APPS_SCRIPT_URL。請於 config.js 填入，或在網址加上 ?api=你的/exec網址（詳見 apps-script/SETUP.md）。');
       msg.className='msg err';
@@ -921,7 +934,8 @@
         ? '目前以 file:// 開啟，瀏覽器會封鎖跨網域連線。請改用網址開啟（例如 GitHub Pages 或本機伺服器）。'
         : '請確認 Apps Script 已部署為「網頁應用程式」，且存取權限設為「所有人（Anyone）」，並使用最新部署網址。');
       msg.className='msg err';
-      msg.innerHTML='⚠️ <b>報名送出失敗</b>，可能是網路或系統忙線，您的報名尚未完成。<br>請稍候再按一次「送出報名」；若仍無法送出，請直接聯絡承辦人協助報名：<br>教學部　林盟淦（分機 <b>57440</b>）　E-mail：<a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a>。';
+      msg.innerHTML='⚠️ <b>報名送出失敗</b>，可能是網路或系統忙線，您的報名尚未完成。<br>請稍候再按一次「送出報名」；若仍無法送出，請直接聯絡承辦人協助報名：<br>教學部　林盟淦（分機 <b>57440</b>）　E-mail：<a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a>。'
+        +'<br><span style="font-weight:400;font-size:.8rem;opacity:.65">系統參考碼：'+String(err&&err.message?err.message:err)+' ｜ '+location.protocol+'</span>';
     }finally{
       submitBtn.disabled=false; submitBtn.textContent=origText;
       msg.scrollIntoView({behavior:'smooth',block:'center'});
