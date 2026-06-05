@@ -2,7 +2,9 @@
  * 2026 醫院敘事醫學系列競賽 — 線上報名後端 (Google Apps Script)
  * ------------------------------------------------------------------
  * 功能：
- *   1. 接收網頁送出的報名資料，寫入 Google Sheets 分頁「競賽活動報名資料」。
+ *   1. 接收網頁送出的報名資料，寫入 Google Sheets：
+ *      - 總表分頁「競賽活動報名資料」（彙整全部報名）
+ *      - 依勾選類別寫入對應分類別分頁（短影音 / 攝影 / 徵文）
  *   2. 接收各類別上傳的作品檔案，依類別存入對應的 Google 雲端硬碟資料夾。
  *
  * 部署方式請參閱同資料夾的 SETUP.md。
@@ -10,9 +12,18 @@
 
 // ===================== 設定區（已依您提供的網址填入 ID）=====================
 
-// Google Sheets ID 與分頁名稱
-const SHEET_ID   = '1Mh0p8pgsAtkRdTDO7MOjPmr0E3BBsGeb_Q3Jt3M7AKU';
-const SHEET_NAME = '競賽活動報名資料';
+// Google Sheets ID
+const SHEET_ID = '1Mh0p8pgsAtkRdTDO7MOjPmr0E3BBsGeb_Q3Jt3M7AKU';
+
+// 總表分頁名稱（彙整全部報名）
+const MASTER_SHEET = '競賽活動報名資料';
+
+// 各類別專屬分頁名稱
+const CAT_TABS = {
+  v: '醫療人文短影音',
+  p: '醫療人文攝影',
+  w: '醫療人文敘事醫學徵文'
+};
 
 // 各類別作品上傳的 Google 雲端硬碟資料夾 ID
 const FOLDERS = {
@@ -28,7 +39,7 @@ const CAT_NAME = {
   w: '醫療人文敘事醫學徵文'
 };
 
-// Google Sheets 表頭（第一列）— 如分頁為空會自動建立
+// 總表分頁表頭（19 欄）— 分頁為空時自動建立
 const HEADERS = [
   '時間戳記',
   '投稿者姓名',
@@ -51,6 +62,13 @@ const HEADERS = [
   '徵文-檔案連結'
 ];
 
+// 各類別分頁表頭（影像類含 AI 欄；徵文不含）
+const CAT_HEADERS = {
+  v: ['時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
+  p: ['時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
+  w: ['時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '標題', '簡介', '檔案連結']
+};
+
 // ===================== 主要進入點 =====================
 
 /** 接收網頁 POST 的報名資料與作品檔案 */
@@ -62,6 +80,7 @@ function doPost(e) {
     const data  = JSON.parse(e.postData.contents);
     const works = data.works || {};
     const ts    = new Date();
+    const tsStr = Utilities.formatDate(ts, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
     const links = { v: '', p: '', w: '' };
 
     // 1) 各類別作品檔案存入對應雲端硬碟資料夾
@@ -77,16 +96,14 @@ function doPost(e) {
           file.mimeType || 'application/octet-stream',
           buildFileName_(data, k, file, idx, ts)
         );
-        const saved = folder.createFile(blob);
-        urls.push(saved.getUrl());
+        urls.push(folder.createFile(blob).getUrl());
       });
       links[k] = urls.join('\n');
     });
 
-    // 2) 報名資料寫入 Google Sheets
-    const sheet = getSheet_();
-    sheet.appendRow([
-      Utilities.formatDate(ts, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss'),
+    // 2) 寫入總表（彙整全部報名）
+    getSheet_(MASTER_SHEET, HEADERS).appendRow([
+      tsStr,
       data.name  || '',
       data.unit  || '',
       data.phone || '',
@@ -107,6 +124,24 @@ function doPost(e) {
       links.w
     ]);
 
+    // 3) 依勾選類別寫入對應分類別分頁
+    ['v', 'p', 'w'].forEach(function (k) {
+      if (!works[k]) return; // 未勾選此類別
+      const sheet = getSheet_(CAT_TABS[k], CAT_HEADERS[k]);
+      if (k === 'w') {
+        sheet.appendRow([
+          tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+          pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
+        ]);
+      } else {
+        sheet.appendRow([
+          tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+          pick_(works, k, 'title'), pick_(works, k, 'desc'),
+          (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
+        ]);
+      }
+    });
+
     return json_({ result: 'success', message: '報名成功' });
   } catch (err) {
     return json_({ result: 'error', message: String(err && err.message ? err.message : err) });
@@ -122,14 +157,15 @@ function doGet() {
 
 // ===================== 輔助函式 =====================
 
-function getSheet_() {
+/** 取得（或建立）指定分頁，分頁為空時自動寫入表頭 */
+function getSheet_(name, headers) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
-  let sheet = ss.getSheetByName(SHEET_NAME);
-  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) sheet = ss.insertSheet(name);
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(HEADERS);
+    sheet.appendRow(headers);
     sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   }
   return sheet;
 }
