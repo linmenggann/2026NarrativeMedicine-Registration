@@ -820,32 +820,39 @@
   }
 
   // 將檔案直接 PUT 到 Drive 可續傳上傳網址（瀏覽器→Google，繞過 Apps Script 50MB 限制）。
-  // 上傳目標是 googleapis.com，其支援 CORS 預檢，故可用 XHR 取得真實上傳進度。
+  // 重要：Google 可續傳上傳「PUT 的回應」不含 CORS 標頭，瀏覽器讀不到回應內容，
+  //   即使檔案已成功上傳也會觸發 onerror。因此本函式以「上傳完成（upload.onload）」
+  //   作為成功依據；若能讀到回應就回傳 file 物件，讀不到則回傳 null（檔案連結改由後端查）。
   function putToDrive(sessionUrl, file, onProgress){
     return new Promise((resolve,reject)=>{
       const xhr=new XMLHttpRequest();
+      let uploaded=false;
       xhr.open('PUT', sessionUrl, true);
       xhr.timeout=1800000; // 30 分鐘，給大檔案
       if(file.type) xhr.setRequestHeader('Content-Type', file.type);
       xhr.upload.onprogress=ev=>{ if(ev.lengthComputable && onProgress) onProgress(ev.loaded/ev.total); };
+      xhr.upload.onload=()=>{ uploaded=true; };
       xhr.onload=()=>{
-        if(xhr.status>=200 && xhr.status<300){ try{ resolve(JSON.parse(xhr.responseText)); }catch(_){ resolve({}); } }
-        else reject(new Error('檔案上傳失敗（HTTP '+xhr.status+'）'));
+        if(xhr.status>=200 && xhr.status<300){ try{ resolve(JSON.parse(xhr.responseText)); return; }catch(_){} }
+        if(uploaded){ resolve(null); return; }
+        reject(new Error('檔案上傳失敗（HTTP '+xhr.status+'）'));
       };
-      xhr.onerror=()=>reject(new Error('檔案上傳連線中斷'));
-      xhr.ontimeout=()=>reject(new Error('檔案上傳逾時'));
+      xhr.onerror=()=>{ uploaded ? resolve(null) : reject(new Error('檔案上傳連線中斷')); };
+      xhr.ontimeout=()=>{ uploaded ? resolve(null) : reject(new Error('檔案上傳逾時')); };
       xhr.send(file);
     });
   }
 
-  // 組合易辨識的檔名：日期時間_姓名_作品名稱(_序號).副檔名
+  // 組合易辨識且唯一的檔名：日期時間_姓名_作品名稱(_序號)_隨機碼.副檔名
+  // （加隨機碼確保上傳後後端能依檔名精準查回該檔案）
   function composeFileName(applicant, title, origName, idx){
     const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'').trim();
     const d=new Date(), p=n=>String(n).padStart(2,'0');
     const stamp=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
     const dot=(origName && origName.lastIndexOf('.')>=0)? origName.slice(origName.lastIndexOf('.')) : '';
     const seq=idx>0? ('_'+(idx+1)) : '';
-    return `${stamp}_${clean(applicant)||'匿名'}_${clean(title)||'作品'}${seq}${dot}`;
+    const rnd=Math.random().toString(36).slice(2,6);
+    return `${stamp}_${clean(applicant)||'匿名'}_${clean(title)||'作品'}${seq}_${rnd}${dot}`;
   }
 
   // 送出成功後清空表單與已上傳檔案
@@ -912,8 +919,16 @@
             setProgress((uploadedBase+frac*file.size)/grandTotal*100, `上傳作品中…（${c.n} ${Math.round(frac*100)}%）`, false);
           });
           uploadedBase+=file.size;
-          const id=(meta && meta.id) ? meta.id : '';
-          worksFiles[c.k].push({ name:fileName, id:id, url: id?('https://drive.google.com/file/d/'+id+'/view'):'' });
+          let id=(meta && meta.id) ? meta.id : '';
+          let url=id ? ('https://drive.google.com/file/d/'+id+'/view') : '';
+          if(!id){
+            // PUT 回應讀不到（Google 未回 CORS 標頭），但檔案已上傳 → 向後端依檔名查回連結
+            setProgress((uploadedBase)/grandTotal*100, `確認檔案中…（${c.n}）`, true);
+            const r=await callBackend({action:'resolveFile', category:c.k, fileName:fileName}, 60000);
+            if(r && r.result==='success' && r.id){ id=r.id; url=r.url || ('https://drive.google.com/file/d/'+r.id+'/view'); }
+            else throw new Error('上傳後找不到檔案，請再試一次');
+          }
+          worksFiles[c.k].push({ name:fileName, id:id, url:url });
         }
       }
       // 2) 組合報名資料（僅文字＋檔案連結，無檔案內容），送後端寫入試算表

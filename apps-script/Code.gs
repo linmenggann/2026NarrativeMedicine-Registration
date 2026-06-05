@@ -50,6 +50,7 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'initUpload') return json_(initUpload_(data));
+    if (data.action === 'resolveFile') return json_(resolveFile_(data));
     return json_(register_(data));
   } catch (err) {
     return json_({ result: 'error', message: String(err && err.message ? err.message : err) });
@@ -108,6 +109,21 @@ function initUpload_(data) {
   if (!uploadUrl) return { result: 'error', message: '未取得上傳網址' };
 
   return { result: 'success', uploadUrl: uploadUrl };
+}
+
+// ===================== A-2. 上傳後依檔名查回檔案連結 =====================
+// （Google 可續傳上傳的 PUT 回應不含 CORS 標頭，瀏覽器讀不到回傳的 file id，
+//   故上傳完成後改由前端帶「檔名」來向後端查詢該檔案的連結。）
+
+function resolveFile_(data) {
+  const folderId = FOLDERS[data.category];
+  if (!folderId) return { result: 'error', message: '未知的類別：' + data.category };
+  const it = DriveApp.getFolderById(folderId).getFilesByName(data.fileName || '');
+  if (it.hasNext()) {
+    const f = it.next();
+    return { result: 'success', id: f.getId(), url: f.getUrl() };
+  }
+  return { result: 'error', message: '找不到剛上傳的檔案：' + (data.fileName || '') };
 }
 
 // ===================== B. 寫入報名資料 =====================
