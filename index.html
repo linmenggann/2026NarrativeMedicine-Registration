@@ -271,6 +271,15 @@
   .msg{margin-top:18px;padding:16px 20px;border-radius:12px;font-weight:700;display:none}
   .msg.ok{display:block;background:var(--teal-light);color:var(--teal-dark);border:1px solid var(--teal)}
   .msg.err{display:block;background:var(--coral-light);color:#9c3c25;border:1px solid var(--coral)}
+  /* upload progress */
+  .progress-wrap{margin-top:22px}
+  .progress-top{display:flex;justify-content:space-between;align-items:center;
+    font-size:.9rem;font-weight:700;color:var(--teal-dark);margin-bottom:8px}
+  .progress-track{height:12px;border-radius:999px;background:var(--teal-light);overflow:hidden}
+  .progress-bar{height:100%;width:0;border-radius:999px;
+    background:linear-gradient(90deg,var(--teal),var(--coral));transition:width .25s ease}
+  .progress-bar.indet{width:40%;animation:indet 1.1s ease-in-out infinite}
+  @keyframes indet{0%{margin-left:-40%}100%{margin-left:100%}}
 
   /* ---------- CONTACT / FOOTER ---------- */
   #contact{background:var(--card)}
@@ -639,6 +648,10 @@
       <div class="submit-row">
         <button type="submit" class="btn-submit">✉️ 送出報名</button>
       </div>
+      <div class="progress-wrap" id="progWrap" hidden>
+        <div class="progress-top"><span id="progLabel">準備中…</span><span id="progPct"></span></div>
+        <div class="progress-track"><div class="progress-bar" id="progBar"></div></div>
+      </div>
       <div class="msg" id="formMsg"></div>
     </form>
   </div>
@@ -694,11 +707,22 @@
 
 <button class="back-top" id="backTop" aria-label="回到頂部">↑</button>
 
+<script src="config.js"></script>
 <script>
-  // ====== 後端設定 ======
-  // 部署 apps-script/Code.gs 為「網頁應用程式」後，把產生的 /exec 網址貼到這裡。
-  // 部署步驟詳見 apps-script/SETUP.md。
-  const APPS_SCRIPT_URL = '';
+  // ====== 後端網址解析 ======
+  // 優先順序：網址參數 ?api= → config.js 的 APP_CONFIG → localStorage 記憶值
+  function resolveApiUrl(){
+    try{
+      const p=new URLSearchParams(location.search);
+      const fromParam=(p.get('api')||p.get('apps_script_url')||'').trim();
+      if(fromParam){ try{localStorage.setItem('APPS_SCRIPT_URL',fromParam);}catch(_){} return fromParam; }
+    }catch(_){}
+    if(window.APP_CONFIG && (window.APP_CONFIG.APPS_SCRIPT_URL||'').trim())
+      return window.APP_CONFIG.APPS_SCRIPT_URL.trim();
+    try{ const ls=(localStorage.getItem('APPS_SCRIPT_URL')||'').trim(); if(ls) return ls; }catch(_){}
+    return '';
+  }
+  const APPS_SCRIPT_URL = resolveApiUrl();
 
   // mobile nav
   const burger=document.getElementById('burger'), nav=document.getElementById('navlinks');
@@ -764,6 +788,17 @@
   const submitBtn=form.querySelector('.btn-submit');
   const CAT_FULL={v:'醫療人文短影音',p:'醫療人文攝影',w:'醫療人文敘事醫學徵文'};
 
+  // 進度條控制
+  const progWrap=document.getElementById('progWrap'), progBar=document.getElementById('progBar'),
+        progLabel=document.getElementById('progLabel'), progPct=document.getElementById('progPct');
+  function showProgress(){ progWrap.hidden=false; }
+  function hideProgress(){ progWrap.hidden=true; progBar.classList.remove('indet'); progBar.style.width='0%'; progPct.textContent=''; }
+  function setProgress(pct,label,indet){
+    progLabel.textContent=label||'';
+    if(indet){ progBar.classList.add('indet'); progBar.style.width=''; progPct.textContent=''; }
+    else{ progBar.classList.remove('indet'); progBar.style.width=Math.max(0,Math.min(100,pct))+'%'; progPct.textContent=Math.round(pct)+'%'; }
+  }
+
   // 將檔案轉為 base64（去除 data: 前綴）
   const fileToB64=file=>new Promise((resolve,reject)=>{
     const r=new FileReader();
@@ -771,6 +806,29 @@
     r.onerror=()=>reject(new Error('檔案讀取失敗：'+file.name));
     r.readAsDataURL(file);
   });
+
+  // 以 XHR 上傳並回報上傳進度（text/plain 避免 CORS 預檢）
+  function postWithProgress(url, body){
+    return new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open('POST', url, true);
+      xhr.timeout=300000; // 5 分鐘
+      xhr.setRequestHeader('Content-Type','text/plain;charset=utf-8');
+      xhr.upload.onprogress=ev=>{
+        if(ev.lengthComputable) setProgress(ev.loaded/ev.total*100, `上傳中…（${Math.round(ev.loaded/ev.total*100)}%）`, false);
+      };
+      xhr.upload.onload=()=>setProgress(100,'伺服器處理中（存檔至雲端）…',true);
+      xhr.onload=()=>{
+        if(xhr.status>=200 && xhr.status<400){
+          try{ resolve(JSON.parse(xhr.responseText)); }
+          catch(_){ reject(new Error('伺服器回應解析失敗')); }
+        }else reject(new Error('HTTP '+xhr.status));
+      };
+      xhr.onerror=()=>reject(new Error('網路連線失敗'));
+      xhr.ontimeout=()=>reject(new Error('連線逾時，請稍後再試'));
+      xhr.send(body);
+    });
+  }
 
   // 送出成功後清空表單與已上傳檔案
   function resetForm(){
@@ -807,7 +865,7 @@
     }
     if(!APPS_SCRIPT_URL){
       msg.className='msg err';
-      msg.innerHTML='⚠️ 系統尚未設定後端（APPS_SCRIPT_URL）。請依 <b>apps-script/SETUP.md</b> 部署後填入網址。';
+      msg.innerHTML='⚠️ 系統尚未設定後端網址。請於 <b>config.js</b> 填入 APPS_SCRIPT_URL，或在網址加上 <b>?api=你的/exec網址</b>（詳見 apps-script/SETUP.md）。';
       msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
 
@@ -815,16 +873,18 @@
     const origText=submitBtn.textContent;
     submitBtn.disabled=true; submitBtn.textContent='⏳ 上傳中…';
     msg.className='msg ok';
-    msg.textContent='⏳ 報名資料與作品上傳中，請勿關閉視窗…（檔案較大時需稍候）';
+    msg.textContent='⏳ 報名資料與作品上傳中，請勿關閉視窗…';
+    showProgress(); setProgress(0,'讀取檔案中…',true);
     msg.scrollIntoView({behavior:'smooth',block:'center'});
 
     try{
-      // 組合 payload，將檔案轉 base64
-      const works={};
+      // 組合 payload，將檔案轉 base64（顯示讀取進度）
+      const works={}; let read=0;
       for(const c of cats){
         const files=[];
         for(const file of (stores[c.k]||[])){
           files.push({name:file.name, mimeType:file.type||'application/octet-stream', data:await fileToB64(file)});
+          read++; setProgress(read/totalFiles*100, `讀取檔案中…（${read}/${totalFiles}）`, false);
         }
         works[c.k]={
           title:get(c.k+'_title'),
@@ -839,21 +899,19 @@
         categories:cats.map(c=>CAT_FULL[c.k]),
         works
       };
-      // 用 text/plain 避免 CORS 預檢
-      const res=await fetch(APPS_SCRIPT_URL,{
-        method:'POST',
-        headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body:JSON.stringify(payload)
-      });
-      const out=await res.json();
+      setProgress(0,'開始上傳…',false);
+      const out=await postWithProgress(APPS_SCRIPT_URL, JSON.stringify(payload));
       if(out.result==='success'){
+        setProgress(100,'完成',false);
         msg.className='msg ok';
         msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，已成功上傳 <b>${totalFiles}</b> 個作品檔案並送出報名資料。後續結果將另行通知。`;
         resetForm();
+        setTimeout(hideProgress,1200);
       }else{
         throw new Error(out.message||'伺服器處理失敗');
       }
     }catch(err){
+      hideProgress();
       msg.className='msg err';
       msg.innerHTML='⚠️ 送出失敗：'+(err.message||err)+'。請稍後再試，或聯絡承辦人（林盟淦 分機 57440）。';
     }finally{

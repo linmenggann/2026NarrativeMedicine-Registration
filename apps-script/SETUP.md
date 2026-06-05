@@ -43,15 +43,21 @@
 5. 按 **部署**，第一次會要求授權（允許存取試算表與雲端硬碟），同意即可。
 6. 複製產生的 **網頁應用程式網址（Web app URL）**，格式類似：
    `https://script.google.com/macros/s/AKfycb.../exec`
-7. 打開專案根目錄的 [`index.html`](../index.html)，找到最上方 `<script>` 內的這一行：
-   ```js
-   const APPS_SCRIPT_URL = '';
-   ```
-   把剛剛複製的網址貼進去：
-   ```js
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
-   ```
-8. 存檔、重新整理網頁，送出一筆測試報名即可。資料會進試算表，檔案會進對應雲端資料夾。
+7. 把複製的網址提供給網頁，**三種方式擇一**（優先序：網址參數 → 設定檔 → 瀏覽器記憶值）：
+   - **方式 A — 設定檔（建議）**：打開專案根目錄的 [`config.js`](../config.js)，填入網址：
+     ```js
+     window.APP_CONFIG = {
+       APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycb.../exec'
+     };
+     ```
+   - **方式 B — 網址參數（免改檔，適合臨時測試）**：開啟網頁時於網址後面加上 `?api=`，
+     系統會自動記住於該瀏覽器：
+     ```
+     index.html?api=https://script.google.com/macros/s/AKfycb.../exec
+     ```
+   - **方式 C — 直接改 index.html**：不建議，請優先用方式 A。
+8. 存檔、重新整理網頁，送出一筆測試報名即可。資料會進試算表，檔案會進對應雲端資料夾，
+   送出過程會顯示**上傳進度條**。
 
 ---
 
