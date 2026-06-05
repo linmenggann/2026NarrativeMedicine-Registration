@@ -583,7 +583,7 @@
                 <input type="file" name="v_file" accept="video/mp4,.mp4" hidden>
                 <span class="dz-ic">🎬</span>
                 <span>點擊或拖曳影片檔至此上傳</span>
-                <small>支援 MP4 格式</small>
+                <small>支援 MP4 格式 ・ 可上傳大檔案影片（無 50MB 限制，會自動分段上傳）</small>
               </label>
               <div class="filelist" data-list="v"></div>
             </div>
@@ -642,7 +642,7 @@
       </div>
 
       <div class="upload-hint">
-        📎 <b>投稿方式：</b>線上填寫報名資料及上傳作品。請於上方所勾選的類別中直接上傳對應作品檔案（影片 / 照片 / 文稿），確認資料無誤後按「送出報名」即完成投稿，無需另行寄送。
+        📎 <b>投稿方式：</b>線上填寫報名資料及上傳作品。請於上方所勾選的類別中直接上傳對應作品檔案（影片 / 照片 / 文稿），確認資料無誤後按「送出報名」即完成投稿，無需另行寄送。<br><b>支援大檔案影片</b>：影片會自動分段上傳、可在不穩的網路下續傳，上傳期間請保持視窗開啟。
       </div>
 
       <div class="submit-row">
@@ -819,28 +819,85 @@
     return out.uploadUrl;
   }
 
-  // 將檔案直接 PUT 到 Drive 可續傳上傳網址（瀏覽器→Google，繞過 Apps Script 50MB 限制）。
-  // 重要：Google 可續傳上傳「PUT 的回應」不含 CORS 標頭，瀏覽器讀不到回應內容，
-  //   即使檔案已成功上傳也會觸發 onerror。因此本函式以「上傳完成（upload.onload）」
-  //   作為成功依據；若能讀到回應就回傳 file 物件，讀不到則回傳 null（檔案連結改由後端查）。
-  function putToDrive(sessionUrl, file, onProgress){
+  // ===== 分塊續傳：把檔案切成多塊直接上傳到 Drive 可續傳工作階段 =====
+  // 設計重點（依實測）：
+  //  - 中間區塊回 308，且帶 CORS 標頭、開放讀取 Range → 可讀進度、可續傳。
+  //  - 最後一塊完成回 200/201 但「不含 CORS 標頭」→ 讀不到回應；以 upload.onload
+  //    判定已上傳完成，檔案連結改由後端 resolveFile 依檔名查回。
+  //  - 區塊上傳中斷時，向工作階段查詢已收到的 byte 數，從中斷點續傳。
+  const CHUNK_SIZE=8*1024*1024;   // 8MB（須為 256KB 的倍數）
+  const CHUNK_MAX_RETRY=5;
+
+  // 查詢工作階段目前已收到的位元組數；回傳已收位元組、total=已完成、-1=查詢失敗
+  function queryUploadedBytes(sessionUrl, total){
+    return new Promise(resolve=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open('PUT', sessionUrl, true);
+      xhr.timeout=60000;
+      xhr.setRequestHeader('Content-Range', 'bytes */'+total);
+      xhr.onload=()=>{
+        if(xhr.status===308){
+          const range=xhr.getResponseHeader('Range'); const m=range&&range.match(/-(\d+)\s*$/);
+          return resolve(m? parseInt(m[1],10)+1 : 0);
+        }
+        if(xhr.status>=200 && xhr.status<300) return resolve(total);
+        resolve(0);
+      };
+      xhr.onerror=()=>resolve(-1);
+      xhr.ontimeout=()=>resolve(-1);
+      xhr.send(new Blob([]));
+    });
+  }
+
+  // 上傳單一區塊；回傳 {done:boolean, meta:object|null, nextOffset:number}
+  function putChunk(sessionUrl, blob, start, end, total, onChunkLoaded){
     return new Promise((resolve,reject)=>{
       const xhr=new XMLHttpRequest();
-      let uploaded=false;
+      let uploaded=false; const isLast=(end===total);
       xhr.open('PUT', sessionUrl, true);
-      xhr.timeout=1800000; // 30 分鐘，給大檔案
-      if(file.type) xhr.setRequestHeader('Content-Type', file.type);
-      xhr.upload.onprogress=ev=>{ if(ev.lengthComputable && onProgress) onProgress(ev.loaded/ev.total); };
+      xhr.timeout=600000; // 單塊 10 分鐘
+      xhr.setRequestHeader('Content-Range', 'bytes '+start+'-'+(end-1)+'/'+total);
+      xhr.upload.onprogress=ev=>{ if(ev.lengthComputable && onChunkLoaded) onChunkLoaded(ev.loaded); };
       xhr.upload.onload=()=>{ uploaded=true; };
       xhr.onload=()=>{
-        if(xhr.status>=200 && xhr.status<300){ try{ resolve(JSON.parse(xhr.responseText)); return; }catch(_){} }
-        if(uploaded){ resolve(null); return; }
-        reject(new Error('檔案上傳失敗（HTTP '+xhr.status+'）'));
+        if(xhr.status===308){
+          const range=xhr.getResponseHeader('Range'); const m=range&&range.match(/-(\d+)\s*$/);
+          resolve({done:false, nextOffset: m? parseInt(m[1],10)+1 : end});
+        }else if(xhr.status>=200 && xhr.status<300){
+          let meta=null; try{ meta=JSON.parse(xhr.responseText); }catch(_){}
+          resolve({done:true, meta:meta});
+        }else{
+          reject(new Error('區塊上傳失敗（HTTP '+xhr.status+'）'));
+        }
       };
-      xhr.onerror=()=>{ uploaded ? resolve(null) : reject(new Error('檔案上傳連線中斷')); };
-      xhr.ontimeout=()=>{ uploaded ? resolve(null) : reject(new Error('檔案上傳逾時')); };
-      xhr.send(file);
+      xhr.onerror=()=>{ (uploaded && isLast) ? resolve({done:true, meta:null}) : reject(new Error('區塊上傳中斷')); };
+      xhr.ontimeout=()=>reject(new Error('區塊上傳逾時'));
+      xhr.send(blob);
     });
+  }
+
+  // 分塊續傳整個檔案；onProgress(loaded,total) 回報此檔已上傳位元組
+  async function uploadFileChunked(sessionUrl, file, onProgress){
+    const total=file.size; let offset=0, attempt=0;
+    while(offset<total){
+      const end=Math.min(offset+CHUNK_SIZE, total);
+      try{
+        const res=await putChunk(sessionUrl, file.slice(offset,end), offset, end, total, loaded=>{
+          if(onProgress) onProgress(offset+loaded, total);
+        });
+        attempt=0;
+        if(res.done){ if(onProgress) onProgress(total,total); return res.meta; }
+        offset=res.nextOffset;
+        if(onProgress) onProgress(offset,total);
+      }catch(err){
+        if(++attempt>CHUNK_MAX_RETRY) throw err;
+        await new Promise(r=>setTimeout(r, 1000*attempt));     // 退避後再試
+        const got=await queryUploadedBytes(sessionUrl, total); // 查中斷點以續傳
+        if(got===total){ if(onProgress) onProgress(total,total); return null; }
+        if(got>=0) offset=got;
+      }
+    }
+    return null; // 送完但拿不到 meta（最後一塊讀不到回應）→ 交由 resolveFile 取連結
   }
 
   // 組合易辨識且唯一的檔名：日期時間_姓名_作品名稱(_序號)_隨機碼.副檔名
@@ -915,8 +972,8 @@
           const fileName=composeFileName(get('name'), get(c.k+'_title'), file.name, i);
           setProgress(uploadedBase/grandTotal*100, `準備上傳…（${c.n}）`, false);
           const sessionUrl=await initUploadSession(c.k, fileName, file.type);
-          const meta=await putToDrive(sessionUrl, file, frac=>{
-            setProgress((uploadedBase+frac*file.size)/grandTotal*100, `上傳作品中…（${c.n} ${Math.round(frac*100)}%）`, false);
+          const meta=await uploadFileChunked(sessionUrl, file, (loaded,total)=>{
+            setProgress((uploadedBase+loaded)/grandTotal*100, `上傳作品中…（${c.n} ${Math.round(loaded/total*100)}%）`, false);
           });
           uploadedBase+=file.size;
           let id=(meta && meta.id) ? meta.id : '';
