@@ -799,29 +799,53 @@
     else{ progBar.classList.remove('indet'); progBar.style.width=Math.max(0,Math.min(100,pct))+'%'; progPct.textContent=Math.round(pct)+'%'; }
   }
 
-  // 將檔案轉為 base64（去除 data: 前綴）
-  const fileToB64=file=>new Promise((resolve,reject)=>{
-    const r=new FileReader();
-    r.onload=()=>resolve(String(r.result).split(',')[1]||'');
-    r.onerror=()=>reject(new Error('檔案讀取失敗：'+file.name));
-    r.readAsDataURL(file);
-  });
-
-  // 送出報名（使用 fetch，重要！）
-  // 注意：若改用 XMLHttpRequest 並掛上 xhr.upload 進度事件，瀏覽器會把跨網域請求
-  //       升級為需「CORS 預檢（OPTIONS）」，而 Apps Script 不支援 OPTIONS，
-  //       會導致上傳階段直接失敗（upload.onerror）。
-  //       fetch 屬單純請求，可正常送出並讀取回應，故採用 fetch；
-  //       代價是無法回報上傳百分比，上傳階段改以不確定動畫顯示。
-  function postRegistration(url, body){
+  // 對 Apps Script 送 JSON（用 fetch + text/plain，屬單純請求、不觸發 CORS 預檢；
+  // Apps Script 不支援 OPTIONS，故不可用會觸發預檢的方式呼叫它）
+  function callBackend(payloadObj, timeoutMs){
     const ctrl=new AbortController();
-    const timer=setTimeout(()=>ctrl.abort(), 300000); // 5 分鐘逾時
-    return fetch(url,{
+    const timer=setTimeout(()=>ctrl.abort(), timeoutMs||300000);
+    return fetch(APPS_SCRIPT_URL,{
       method:'POST',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:body,
+      body:JSON.stringify(payloadObj),
       signal:ctrl.signal
     }).then(r=>r.json()).finally(()=>clearTimeout(timer));
+  }
+
+  // 向後端申請一個 Google Drive「可續傳上傳網址」（後端以主辦者身分建立）
+  async function initUploadSession(category, fileName, mimeType){
+    const out=await callBackend({action:'initUpload', category:category, fileName:fileName, mimeType:mimeType||'application/octet-stream'}, 60000);
+    if(!out || out.result!=='success' || !out.uploadUrl) throw new Error((out&&out.message)||'無法建立上傳工作階段');
+    return out.uploadUrl;
+  }
+
+  // 將檔案直接 PUT 到 Drive 可續傳上傳網址（瀏覽器→Google，繞過 Apps Script 50MB 限制）。
+  // 上傳目標是 googleapis.com，其支援 CORS 預檢，故可用 XHR 取得真實上傳進度。
+  function putToDrive(sessionUrl, file, onProgress){
+    return new Promise((resolve,reject)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open('PUT', sessionUrl, true);
+      xhr.timeout=1800000; // 30 分鐘，給大檔案
+      if(file.type) xhr.setRequestHeader('Content-Type', file.type);
+      xhr.upload.onprogress=ev=>{ if(ev.lengthComputable && onProgress) onProgress(ev.loaded/ev.total); };
+      xhr.onload=()=>{
+        if(xhr.status>=200 && xhr.status<300){ try{ resolve(JSON.parse(xhr.responseText)); }catch(_){ resolve({}); } }
+        else reject(new Error('檔案上傳失敗（HTTP '+xhr.status+'）'));
+      };
+      xhr.onerror=()=>reject(new Error('檔案上傳連線中斷'));
+      xhr.ontimeout=()=>reject(new Error('檔案上傳逾時'));
+      xhr.send(file);
+    });
+  }
+
+  // 組合易辨識的檔名：日期時間_姓名_作品名稱(_序號).副檔名
+  function composeFileName(applicant, title, origName, idx){
+    const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'').trim();
+    const d=new Date(), p=n=>String(n).padStart(2,'0');
+    const stamp=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    const dot=(origName && origName.lastIndexOf('.')>=0)? origName.slice(origName.lastIndexOf('.')) : '';
+    const seq=idx>0? ('_'+(idx+1)) : '';
+    return `${stamp}_${clean(applicant)||'匿名'}_${clean(title)||'作品'}${seq}${dot}`;
   }
 
   // 送出成功後清空表單與已上傳檔案
@@ -857,19 +881,6 @@
       msg.className='msg err'; msg.textContent=`⚠️ 請上傳「${missing.join('、')}」的作品檔案。`;
       msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
-    // 檔案大小檢查（線上上傳單次上限約 50MB，預留編碼膨脹空間）
-    const MAX_FILE=35*1024*1024, MAX_TOTAL=45*1024*1024;
-    const mb=b=>(b/1048576).toFixed(1)+'MB';
-    let totalBytes=0; const tooBig=[];
-    cats.forEach(c=>(stores[c.k]||[]).forEach(file=>{ totalBytes+=file.size; if(file.size>MAX_FILE) tooBig.push(`${file.name}（${mb(file.size)}）`); }));
-    if(tooBig.length || totalBytes>MAX_TOTAL){
-      console.warn('[檔案過大]', {totalBytes, tooBig});
-      msg.className='msg err';
-      msg.innerHTML='⚠️ <b>作品檔案太大，無法線上上傳</b>（單檔上限約 35MB、全部合計約 45MB；目前合計 '+mb(totalBytes)+'）。'
-        +(tooBig.length?('<br>過大檔案：'+tooBig.join('、')+'。'):'')
-        +'<br>請將影片／照片壓縮後再上傳；若無法壓縮，請聯絡承辦人協助投稿：教學部　林盟淦（分機 <b>57440</b>）　E-mail：<a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a>。';
-      msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
-    }
     if(!APPS_SCRIPT_URL){
       console.error('[設定錯誤] 尚未設定 APPS_SCRIPT_URL。請於 config.js 填入，或在網址加上 ?api=你的/exec網址（詳見 apps-script/SETUP.md）。');
       msg.className='msg err';
@@ -882,24 +893,38 @@
     submitBtn.disabled=true; submitBtn.textContent='⏳ 上傳中…';
     msg.className='msg ok';
     msg.textContent='⏳ 報名資料與作品上傳中，請勿關閉視窗…';
-    showProgress(); setProgress(0,'讀取檔案中…',true);
+    showProgress(); setProgress(0,'準備上傳…',true);
     msg.scrollIntoView({behavior:'smooth',block:'center'});
 
     try{
-      // 組合 payload，將檔案轉 base64（顯示讀取進度）
-      const works={}; let read=0;
+      // 1) 逐一將作品檔案「直接上傳到 Google Drive」（可續傳，支援大檔案），收集檔案連結
+      let grandTotal=0; cats.forEach(c=>(stores[c.k]||[]).forEach(file=>{ grandTotal+=file.size; })); grandTotal=grandTotal||1;
+      let uploadedBase=0;
+      const worksFiles={v:[],p:[],w:[]};
       for(const c of cats){
-        const files=[];
-        for(const file of (stores[c.k]||[])){
-          files.push({name:file.name, mimeType:file.type||'application/octet-stream', data:await fileToB64(file)});
-          read++; setProgress(read/totalFiles*100, `讀取檔案中…（${read}/${totalFiles}）`, false);
+        const files=stores[c.k]||[];
+        for(let i=0;i<files.length;i++){
+          const file=files[i];
+          const fileName=composeFileName(get('name'), get(c.k+'_title'), file.name, i);
+          setProgress(uploadedBase/grandTotal*100, `準備上傳…（${c.n}）`, false);
+          const sessionUrl=await initUploadSession(c.k, fileName, file.type);
+          const meta=await putToDrive(sessionUrl, file, frac=>{
+            setProgress((uploadedBase+frac*file.size)/grandTotal*100, `上傳作品中…（${c.n} ${Math.round(frac*100)}%）`, false);
+          });
+          uploadedBase+=file.size;
+          const id=(meta && meta.id) ? meta.id : '';
+          worksFiles[c.k].push({ name:fileName, id:id, url: id?('https://drive.google.com/file/d/'+id+'/view'):'' });
         }
+      }
+      // 2) 組合報名資料（僅文字＋檔案連結，無檔案內容），送後端寫入試算表
+      const works={};
+      for(const c of cats){
         works[c.k]={
           title:get(c.k+'_title'),
           desc:get(c.k+'_desc'),
           ai: c.k!=='w' ? !!(f[c.k+'_ai']&&f[c.k+'_ai'].checked) : false,
           aiName: c.k!=='w' ? get(c.k+'_ai_name') : '',
-          files
+          files: worksFiles[c.k]
         };
       }
       const payload={
@@ -907,8 +932,8 @@
         categories:cats.map(c=>CAT_FULL[c.k]),
         works
       };
-      setProgress(100,'上傳中…請稍候（檔案較大時需多等一下）',true);
-      const out=await postRegistration(APPS_SCRIPT_URL, JSON.stringify(payload));
+      setProgress(100,'完成報名登錄…',true);
+      const out=await callBackend(payload);
       if(out && out.result==='success'){
         setProgress(100,'完成',false);
         msg.className='msg ok';
