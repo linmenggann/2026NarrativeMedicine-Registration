@@ -8,5 +8,5 @@
  *   index.html?api=https://script.google.com/macros/s/XXXX/exec
  */
 window.APP_CONFIG = {
-  APPS_SCRIPT_URL: ''
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx0mA3t-XvJ4j-M1zzfoGKnzBC-mMZNK7iuhN4QttUMP5hRsuNmlXxywBTcNmNKl9upWA/exec'
 };
