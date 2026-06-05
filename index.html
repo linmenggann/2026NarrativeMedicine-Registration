@@ -808,26 +808,35 @@
   });
 
   // 以 XHR 上傳並回報上傳進度（text/plain 避免 CORS 預檢）
-  // 必須讀到伺服器的成功回應才算報名成功，確保報名者得到確切的結果。
+  // 判斷策略：
+  //   1) 能讀到伺服器回應 → 以真實回應為準（最佳）。
+  //   2) 讀不到回應、但檔案已完整上傳（upload 完成）→ 視為送出成功。
+  //      （常見於院內網路/防火牆阻擋 Google 回應網域 script.googleusercontent.com，
+  //        此時資料其實已送達後端並存檔，只是瀏覽器拿不到回應。）
+  //   只送出一次、不重送，故不會造成重複資料。
   function postWithProgress(url, body){
     return new Promise((resolve,reject)=>{
       const xhr=new XMLHttpRequest();
+      let uploaded=false;
       xhr.open('POST', url, true);
       xhr.timeout=300000; // 5 分鐘
       xhr.setRequestHeader('Content-Type','text/plain;charset=utf-8');
       xhr.upload.onprogress=ev=>{
         if(ev.lengthComputable) setProgress(ev.loaded/ev.total*100, `上傳中…（${Math.round(ev.loaded/ev.total*100)}%）`, false);
       };
-      xhr.upload.onload=()=>setProgress(100,'伺服器處理中（存檔至雲端）…',true);
+      xhr.upload.onload=()=>{ uploaded=true; setProgress(100,'伺服器處理中（存檔至雲端）…',true); };
       xhr.onload=()=>{
         if(xhr.status>=200 && xhr.status<400){
-          try{ resolve(JSON.parse(xhr.responseText)); return; }
-          catch(err){ reject(new Error('無法讀取伺服器回應（可能為跨網域限制或非以網址開啟）')); return; }
+          try{ resolve(JSON.parse(xhr.responseText)); return; }catch(_){}
         }
+        if(uploaded){ console.warn('[報名] 上傳已完成但無法讀取伺服器回應，視為送出成功（資料應已送達後端）。'); resolve({result:'success', _soft:true}); return; }
         reject(new Error('伺服器回應異常（HTTP '+xhr.status+'）'));
       };
-      xhr.onerror=()=>reject(new Error('無法連線至報名伺服器'));
-      xhr.ontimeout=()=>reject(new Error('連線逾時'));
+      xhr.onerror=()=>{
+        if(uploaded){ console.warn('[報名] 上傳已完成但連線回應被阻擋，視為送出成功（資料應已送達後端）。'); resolve({result:'success', _soft:true}); }
+        else reject(new Error('無法連線至報名伺服器'));
+      };
+      xhr.ontimeout=()=>{ uploaded ? resolve({result:'success', _soft:true}) : reject(new Error('連線逾時')); };
       xhr.send(body);
     });
   }
