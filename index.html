@@ -244,6 +244,23 @@
   .ai-name{display:none;margin-top:10px}
   .ai-name.show{display:block}
   .form-note{font-size:.86rem;color:var(--muted);margin-top:6px}
+  /* upload dropzone */
+  .dropzone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    text-align:center;padding:26px 18px;border:2px dashed var(--teal);border-radius:14px;
+    background:var(--teal-light);color:var(--teal-dark);cursor:pointer;transition:.2s;font-weight:600}
+  .dropzone:hover{background:#dcefef;border-color:var(--teal-dark)}
+  .dropzone.drag{background:var(--coral-light);border-color:var(--coral);color:#9c3c25}
+  .dropzone .dz-ic{font-size:1.9rem}
+  .dropzone small{font-weight:500;color:var(--muted);font-size:.82rem}
+  .filelist{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  .filelist .fi{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);
+    border-radius:10px;padding:9px 12px;font-size:.9rem}
+  .filelist .fi .fi-ic{font-size:1.2rem}
+  .filelist .fi .fi-name{font-weight:600;color:var(--ink);word-break:break-all;flex:1}
+  .filelist .fi .fi-size{color:var(--muted);font-size:.82rem;white-space:nowrap}
+  .filelist .fi .fi-del{background:none;border:0;color:var(--coral);font-size:1.1rem;cursor:pointer;
+    line-height:1;padding:2px 6px;border-radius:6px}
+  .filelist .fi .fi-del:hover{background:var(--coral-light)}
   .submit-row{margin-top:30px;text-align:center}
   .btn-submit{background:var(--coral);color:#fff;padding:16px 50px;font-size:1.1rem;border-radius:999px;
     border:0;font-weight:800;cursor:pointer;box-shadow:0 12px 30px rgba(233,105,74,.4);transition:.2s;font-family:inherit;letter-spacing:1px}
@@ -398,8 +415,8 @@
       <div class="info-box">
         <h4><span class="ico">📤</span> 投稿方式</h4>
         <ul>
-          <li>線上填寫報名資料（見下方報名表）。</li>
-          <li>作品上傳至信箱：<b>910632@mail.chimei.org.tw</b></li>
+          <li><b>線上填寫報名資料及上傳作品</b>（見下方報名表）。</li>
+          <li>一站完成報名與作品上傳，免另行寄送。</li>
         </ul>
       </div>
       <div class="info-box">
@@ -412,7 +429,7 @@
     </div>
     <div class="highlight-strip">
       <div class="hs"><span>📅 徵稿日期</span><b>即日起 ～ 115 年 7 月 15 日（三）止</b></div>
-      <div class="hs"><span>📧 作品上傳信箱</span><b>910632@mail.chimei.org.tw</b></div>
+      <div class="hs"><span>📝 投稿方式</span><b>線上填寫報名資料及上傳作品</b></div>
       <a href="#register" class="btn btn-ghost" style="border-color:#fff">前往報名 →</a>
     </div>
   </div>
@@ -514,7 +531,7 @@
   <div class="wrap">
     <span class="eyebrow">Registration</span>
     <h2 class="title">📣 線上報名表</h2>
-    <p class="lead">填寫以下資料完成報名。送出後，請再將作品檔案寄至 910632@mail.chimei.org.tw。</p>
+    <p class="lead">線上填寫報名資料及上傳作品，一站完成報名，免另行寄送。</p>
 
     <form class="form-card" id="regForm" novalidate>
       <div class="row2">
@@ -551,6 +568,16 @@
           <div class="cat-body">
             <div class="fld"><label>作品名稱</label><input type="text" name="v_title" placeholder="作品名稱"></div>
             <div class="fld"><label>文字說明（100 字內）</label><textarea name="v_desc" maxlength="120" placeholder="簡述作品內容"></textarea></div>
+            <div class="fld">
+              <label>上傳作品檔案（MP4，60 秒內）</label>
+              <label class="dropzone" data-up="v">
+                <input type="file" name="v_file" accept="video/mp4,.mp4" hidden>
+                <span class="dz-ic">🎬</span>
+                <span>點擊或拖曳影片檔至此上傳</span>
+                <small>支援 MP4 格式</small>
+              </label>
+              <div class="filelist" data-list="v"></div>
+            </div>
             <label class="ai-row"><input type="checkbox" name="v_ai" class="ai-toggle"> 以 AI 協作</label>
             <div class="ai-name"><input type="text" name="v_ai_name" placeholder="程式／網站名稱"></div>
           </div>
@@ -566,6 +593,16 @@
           <div class="cat-body">
             <div class="fld"><label>作品名稱</label><input type="text" name="p_title" placeholder="作品名稱"></div>
             <div class="fld"><label>文字說明（100–200 字）</label><textarea name="p_desc" maxlength="220" placeholder="作品說明"></textarea></div>
+            <div class="fld">
+              <label>上傳作品檔案（JPEG）</label>
+              <label class="dropzone" data-up="p">
+                <input type="file" name="p_file" accept="image/jpeg,.jpg,.jpeg" multiple hidden>
+                <span class="dz-ic">📷</span>
+                <span>點擊或拖曳照片至此上傳</span>
+                <small>支援 JPEG 格式，可多張</small>
+              </label>
+              <div class="filelist" data-list="p"></div>
+            </div>
             <label class="ai-row"><input type="checkbox" name="p_ai" class="ai-toggle"> 以 AI 協作</label>
             <div class="ai-name"><input type="text" name="p_ai_name" placeholder="程式／網站名稱"></div>
           </div>
@@ -581,12 +618,22 @@
           <div class="cat-body">
             <div class="fld"><label>主題 / 標題</label><input type="text" name="w_title" placeholder="文章標題"></div>
             <div class="fld"><label>簡介（200 字內）</label><textarea name="w_desc" maxlength="220" placeholder="文章簡介"></textarea></div>
+            <div class="fld">
+              <label>上傳作品檔案（1,500–3,000 字）</label>
+              <label class="dropzone" data-up="w">
+                <input type="file" name="w_file" accept=".doc,.docx,.pdf,.txt,.odt" hidden>
+                <span class="dz-ic">📖</span>
+                <span>點擊或拖曳文稿檔至此上傳</span>
+                <small>支援 Word／PDF／TXT 格式</small>
+              </label>
+              <div class="filelist" data-list="w"></div>
+            </div>
           </div>
         </div>
       </div>
 
       <div class="upload-hint">
-        📎 <b>作品上傳提醒：</b>完成線上報名後，請務必將作品檔案（影片 / 照片 / 文稿）以電子郵件寄送至 <b>910632@mail.chimei.org.tw</b>，並於信件主旨註明「敘事醫學競賽＋姓名＋類別」。
+        📎 <b>投稿方式：</b>線上填寫報名資料及上傳作品。請於上方所勾選的類別中直接上傳對應作品檔案（影片 / 照片 / 文稿），確認資料無誤後按「送出報名」即完成投稿，無需另行寄送。
       </div>
 
       <div class="submit-row">
@@ -620,7 +667,7 @@
         </div>
         <div class="ci-line">
           <span class="ic">📧</span>
-          <div class="t"><span>E-mail / 作品上傳</span><b><a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a></b></div>
+          <div class="t"><span>E-mail（諮詢用）</span><b><a href="mailto:910632@mail.chimei.org.tw">910632@mail.chimei.org.tw</a></b></div>
         </div>
         <div class="ci-line">
           <span class="ic">ℹ️</span>
@@ -675,30 +722,66 @@
     });
   });
 
-  // form submit -> compose mailto
+  // ---------- file upload (drag & drop + list) ----------
+  const fmtSize=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB';
+  const stores={}; // {v:[File], p:[File], w:[File]}
+  document.querySelectorAll('.dropzone').forEach(zone=>{
+    const key=zone.dataset.up;
+    const input=zone.querySelector('input[type=file]');
+    const multiple=input.multiple;
+    const listEl=document.querySelector(`.filelist[data-list="${key}"]`);
+    stores[key]=[];
+    const render=()=>{
+      listEl.innerHTML='';
+      stores[key].forEach((file,i)=>{
+        const ic=file.type.startsWith('video')?'🎬':file.type.startsWith('image')?'🖼️':'📄';
+        const row=document.createElement('div'); row.className='fi';
+        row.innerHTML=`<span class="fi-ic">${ic}</span><span class="fi-name"></span><span class="fi-size">${fmtSize(file.size)}</span><button type="button" class="fi-del" aria-label="移除">✕</button>`;
+        row.querySelector('.fi-name').textContent=file.name;
+        row.querySelector('.fi-del').addEventListener('click',()=>{stores[key].splice(i,1);render();});
+        listEl.appendChild(row);
+      });
+    };
+    const addFiles=files=>{
+      const arr=Array.from(files);
+      if(multiple) arr.forEach(f=>stores[key].push(f));
+      else stores[key]=arr.slice(0,1);
+      render();
+    };
+    input.addEventListener('change',()=>{addFiles(input.files); input.value='';});
+    ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.add('drag');}));
+    ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.remove('drag');}));
+    zone.addEventListener('drop',e=>{if(e.dataTransfer&&e.dataTransfer.files.length)addFiles(e.dataTransfer.files);});
+  });
+
+  // ---------- form submit ----------
   const form=document.getElementById('regForm'), msg=document.getElementById('formMsg');
   form.addEventListener('submit',e=>{
     e.preventDefault();
     const f=form;
     const get=n=>(f[n]&&f[n].value||'').trim();
     if(!get('name')||!get('unit')||!get('phone')||!get('email')){
-      msg.className='msg err'; msg.textContent='⚠️ 請完整填寫姓名、服務單位、聯絡電話與 E-mail。'; return;
+      msg.className='msg err'; msg.textContent='⚠️ 請完整填寫姓名、服務單位、聯絡電話與 E-mail。';
+      msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
     const cats=[];
-    if(f.cat_v.checked)cats.push('短影音'); if(f.cat_p.checked)cats.push('攝影'); if(f.cat_w.checked)cats.push('徵文');
+    if(f.cat_v.checked)cats.push({k:'v',n:'短影音'});
+    if(f.cat_p.checked)cats.push({k:'p',n:'攝影'});
+    if(f.cat_w.checked)cats.push({k:'w',n:'徵文'});
     if(!cats.length){
-      msg.className='msg err'; msg.textContent='⚠️ 請至少勾選一項參賽類別。'; return;
+      msg.className='msg err'; msg.textContent='⚠️ 請至少勾選一項參賽類別。';
+      msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
-    let body=`【2026 敘事醫學競賽 線上報名】%0D%0A%0D%0A`;
-    body+=`投稿者：${get('name')}%0D%0A服務單位：${get('unit')}%0D%0A聯絡電話：${get('phone')}%0D%0AE-mail：${get('email')}%0D%0A%0D%0A參賽類別：${cats.join('、')}%0D%0A`;
-    if(f.cat_v.checked){body+=`%0D%0A[短影音] 作品名稱：${get('v_title')}　說明：${get('v_desc')}　${f.v_ai.checked?'(AI協作:'+get('v_ai_name')+')':''}%0D%0A`;}
-    if(f.cat_p.checked){body+=`%0D%0A[攝影] 作品名稱：${get('p_title')}　說明：${get('p_desc')}　${f.p_ai.checked?'(AI協作:'+get('p_ai_name')+')':''}%0D%0A`;}
-    if(f.cat_w.checked){body+=`%0D%0A[徵文] 標題：${get('w_title')}　簡介：${get('w_desc')}%0D%0A`;}
-    body+=`%0D%0A※ 請記得另將作品檔案附加於本郵件後寄出。`;
-    const subject=encodeURIComponent(`敘事醫學競賽報名_${get('name')}_${cats.join('+')}`);
+    // 每個勾選的類別都需上傳作品檔案
+    const missing=cats.filter(c=>!stores[c.k]||!stores[c.k].length).map(c=>c.n);
+    if(missing.length){
+      msg.className='msg err'; msg.textContent=`⚠️ 請上傳「${missing.join('、')}」的作品檔案。`;
+      msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
+    }
+    const totalFiles=cats.reduce((s,c)=>s+stores[c.k].length,0);
     msg.className='msg ok';
-    msg.innerHTML='✅ 報名資料已準備完成！系統正開啟您的郵件程式，請<b>附上作品檔案</b>後寄出至 910632@mail.chimei.org.tw。';
-    window.location.href=`mailto:910632@mail.chimei.org.tw?subject=${subject}&body=${body}`;
+    msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，已成功上傳 <b>${totalFiles}</b> 個作品檔案。我們已收到您的線上報名資料及作品，後續結果將另行通知。`;
+    msg.scrollIntoView({behavior:'smooth',block:'center'});
   });
 
   // countdown (deadline 115/07/15 = 2026/07/15)
