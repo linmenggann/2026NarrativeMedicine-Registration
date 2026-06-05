@@ -808,24 +808,29 @@
   });
 
   // 以 XHR 上傳並回報上傳進度（text/plain 避免 CORS 預檢）
+  // 註：Apps Script 跨網域回應有時無法被瀏覽器讀取（例如以 file:// 開啟）。
+  //     若資料已完整上傳（upload 完成）但回應讀不到，視為「已送出、待確認」，
+  //     不重送以免造成重複資料。
   function postWithProgress(url, body){
     return new Promise((resolve,reject)=>{
       const xhr=new XMLHttpRequest();
+      let uploaded=false;
       xhr.open('POST', url, true);
       xhr.timeout=300000; // 5 分鐘
       xhr.setRequestHeader('Content-Type','text/plain;charset=utf-8');
       xhr.upload.onprogress=ev=>{
         if(ev.lengthComputable) setProgress(ev.loaded/ev.total*100, `上傳中…（${Math.round(ev.loaded/ev.total*100)}%）`, false);
       };
-      xhr.upload.onload=()=>setProgress(100,'伺服器處理中（存檔至雲端）…',true);
+      xhr.upload.onload=()=>{ uploaded=true; setProgress(100,'伺服器處理中（存檔至雲端）…',true); };
       xhr.onload=()=>{
         if(xhr.status>=200 && xhr.status<400){
-          try{ resolve(JSON.parse(xhr.responseText)); }
-          catch(_){ reject(new Error('伺服器回應解析失敗')); }
-        }else reject(new Error('HTTP '+xhr.status));
+          try{ resolve(JSON.parse(xhr.responseText)); return; }catch(_){}
+        }
+        if(uploaded) resolve({result:'success', _unverified:true});
+        else reject(new Error('伺服器回應異常（HTTP '+xhr.status+'）'));
       };
-      xhr.onerror=()=>reject(new Error('網路連線失敗'));
-      xhr.ontimeout=()=>reject(new Error('連線逾時，請稍後再試'));
+      xhr.onerror=()=>{ uploaded ? resolve({result:'success', _unverified:true}) : reject(new Error('網路連線失敗')); };
+      xhr.ontimeout=()=>{ uploaded ? resolve({result:'success', _unverified:true}) : reject(new Error('連線逾時，請稍後再試')); };
       xhr.send(body);
     });
   }
@@ -904,7 +909,11 @@
       if(out.result==='success'){
         setProgress(100,'完成',false);
         msg.className='msg ok';
-        msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，已成功上傳 <b>${totalFiles}</b> 個作品檔案並送出報名資料。後續結果將另行通知。`;
+        if(out._unverified){
+          msg.innerHTML=`✅ <b>報名已送出！</b>資料與 <b>${totalFiles}</b> 個作品檔案已上傳完成，但瀏覽器無法即時取得伺服器回應確認（常見於以本機檔案開啟，或跨網域限制）。<br>請至 Google 試算表「競賽活動報名資料」確認是否已新增您的資料；若未出現，請見下方排解或聯絡承辦人（林盟淦 分機 57440）。`;
+        }else{
+          msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，已成功上傳 <b>${totalFiles}</b> 個作品檔案並送出報名資料。後續結果將另行通知。`;
+        }
         resetForm();
         setTimeout(hideProgress,1200);
       }else{
@@ -913,7 +922,10 @@
     }catch(err){
       hideProgress();
       msg.className='msg err';
-      msg.innerHTML='⚠️ 送出失敗：'+(err.message||err)+'。請稍後再試，或聯絡承辦人（林盟淦 分機 57440）。';
+      const tip = location.protocol==='file:'
+        ? '<br>📌 偵測到您以本機檔案（file://）開啟網頁，瀏覽器會封鎖跨網域連線。請改用網址開啟（例如啟用 GitHub Pages，或以本機伺服器執行）。'
+        : '<br>📌 請確認 Apps Script 已部署為「網頁應用程式」，且「誰可以存取」設為 <b>所有人（Anyone）</b>，並使用最新版本的部署網址。';
+      msg.innerHTML='⚠️ 送出失敗：'+(err.message||err)+'。'+tip+'<br>仍無法解決請聯絡承辦人（林盟淦 分機 57440）。';
     }finally{
       submitBtn.disabled=false; submitBtn.textContent=origText;
       msg.scrollIntoView({behavior:'smooth',block:'center'});
