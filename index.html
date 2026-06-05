@@ -695,6 +695,11 @@
 <button class="back-top" id="backTop" aria-label="回到頂部">↑</button>
 
 <script>
+  // ====== 後端設定 ======
+  // 部署 apps-script/Code.gs 為「網頁應用程式」後，把產生的 /exec 網址貼到這裡。
+  // 部署步驟詳見 apps-script/SETUP.md。
+  const APPS_SCRIPT_URL = '';
+
   // mobile nav
   const burger=document.getElementById('burger'), nav=document.getElementById('navlinks');
   burger.addEventListener('click',()=>nav.classList.toggle('open'));
@@ -756,7 +761,29 @@
 
   // ---------- form submit ----------
   const form=document.getElementById('regForm'), msg=document.getElementById('formMsg');
-  form.addEventListener('submit',e=>{
+  const submitBtn=form.querySelector('.btn-submit');
+  const CAT_FULL={v:'醫療人文短影音',p:'醫療人文攝影',w:'醫療人文敘事醫學徵文'};
+
+  // 將檔案轉為 base64（去除 data: 前綴）
+  const fileToB64=file=>new Promise((resolve,reject)=>{
+    const r=new FileReader();
+    r.onload=()=>resolve(String(r.result).split(',')[1]||'');
+    r.onerror=()=>reject(new Error('檔案讀取失敗：'+file.name));
+    r.readAsDataURL(file);
+  });
+
+  // 送出成功後清空表單與已上傳檔案
+  function resetForm(){
+    form.reset();
+    ['v','p','w'].forEach(k=>{
+      if(stores[k]) stores[k].length=0;
+      const l=document.querySelector(`.filelist[data-list="${k}"]`); if(l) l.innerHTML='';
+    });
+    document.querySelectorAll('.cat-block').forEach(b=>b.classList.remove('on'));
+    document.querySelectorAll('.ai-name').forEach(a=>a.classList.remove('show'));
+  }
+
+  form.addEventListener('submit',async e=>{
     e.preventDefault();
     const f=form;
     const get=n=>(f[n]&&f[n].value||'').trim();
@@ -778,10 +805,61 @@
       msg.className='msg err'; msg.textContent=`⚠️ 請上傳「${missing.join('、')}」的作品檔案。`;
       msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
+    if(!APPS_SCRIPT_URL){
+      msg.className='msg err';
+      msg.innerHTML='⚠️ 系統尚未設定後端（APPS_SCRIPT_URL）。請依 <b>apps-script/SETUP.md</b> 部署後填入網址。';
+      msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
+    }
+
     const totalFiles=cats.reduce((s,c)=>s+stores[c.k].length,0);
+    const origText=submitBtn.textContent;
+    submitBtn.disabled=true; submitBtn.textContent='⏳ 上傳中…';
     msg.className='msg ok';
-    msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，已成功上傳 <b>${totalFiles}</b> 個作品檔案。我們已收到您的線上報名資料及作品，後續結果將另行通知。`;
+    msg.textContent='⏳ 報名資料與作品上傳中，請勿關閉視窗…（檔案較大時需稍候）';
     msg.scrollIntoView({behavior:'smooth',block:'center'});
+
+    try{
+      // 組合 payload，將檔案轉 base64
+      const works={};
+      for(const c of cats){
+        const files=[];
+        for(const file of (stores[c.k]||[])){
+          files.push({name:file.name, mimeType:file.type||'application/octet-stream', data:await fileToB64(file)});
+        }
+        works[c.k]={
+          title:get(c.k+'_title'),
+          desc:get(c.k+'_desc'),
+          ai: c.k!=='w' ? !!(f[c.k+'_ai']&&f[c.k+'_ai'].checked) : false,
+          aiName: c.k!=='w' ? get(c.k+'_ai_name') : '',
+          files
+        };
+      }
+      const payload={
+        name:get('name'), unit:get('unit'), phone:get('phone'), email:get('email'),
+        categories:cats.map(c=>CAT_FULL[c.k]),
+        works
+      };
+      // 用 text/plain 避免 CORS 預檢
+      const res=await fetch(APPS_SCRIPT_URL,{
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(payload)
+      });
+      const out=await res.json();
+      if(out.result==='success'){
+        msg.className='msg ok';
+        msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，已成功上傳 <b>${totalFiles}</b> 個作品檔案並送出報名資料。後續結果將另行通知。`;
+        resetForm();
+      }else{
+        throw new Error(out.message||'伺服器處理失敗');
+      }
+    }catch(err){
+      msg.className='msg err';
+      msg.innerHTML='⚠️ 送出失敗：'+(err.message||err)+'。請稍後再試，或聯絡承辦人（林盟淦 分機 57440）。';
+    }finally{
+      submitBtn.disabled=false; submitBtn.textContent=origText;
+      msg.scrollIntoView({behavior:'smooth',block:'center'});
+    }
   });
 
   // countdown (deadline 115/07/15 = 2026/07/15)
