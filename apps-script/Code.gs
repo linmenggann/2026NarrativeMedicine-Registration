@@ -39,9 +39,9 @@ const HEADERS = [
 ];
 
 const CAT_HEADERS = {
-  v: ['時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
-  p: ['時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
-  w: ['時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '標題', '簡介', '檔案連結']
+  v: ['編號', '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
+  p: ['編號', '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
+  w: ['編號', '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '標題', '簡介', '檔案連結']
 };
 
 // ===================== 進入點 =====================
@@ -157,22 +157,25 @@ function register_(data) {
       pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
     ]);
 
-    // 分類別分頁
+    // 分類別分頁（含自動編號）
     ['v', 'p', 'w'].forEach(function (k) {
       if (!works[k]) return;
       const sheet = getSheet_(CAT_TABS[k], CAT_HEADERS[k]);
+      const num = sheet.getLastRow(); // 表頭已存在，此值＝現有資料列數＋1，即本筆編號（從 1 起）
       if (k === 'w') {
         sheet.appendRow([
-          tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+          num, tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
           pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
         ]);
       } else {
         sheet.appendRow([
-          tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+          num, tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
           pick_(works, k, 'title'), pick_(works, k, 'desc'),
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
         ]);
       }
+      // 依編號為雲端檔案改名：編號_作品名稱(徵文用主題/標題)_投稿者姓名(_序號).副檔名
+      renameFilesByNo_(works[k].files, num, pick_(works, k, 'title'), data.name);
     });
 
     return { result: 'success', message: '報名成功' };
@@ -182,6 +185,27 @@ function register_(data) {
 }
 
 // ===================== 輔助函式 =====================
+
+/**
+ * 依編號為已上傳的雲端檔案改名（改名不會改變檔案連結/ID）。
+ * 命名：編號_作品名稱_投稿者姓名(_序號).副檔名（同一筆有多檔時才加序號以避免同名）。
+ */
+function renameFilesByNo_(files, no, title, applicant) {
+  if (!files || !files.length) return;
+  const clean = function (s) { return String(s || '').replace(/[\\/:*?"<>|]/g, '').trim(); };
+  const t = clean(title) || '作品';
+  const a = clean(applicant) || '匿名';
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    if (!f || !f.id) continue;
+    try {
+      const name = f.name || '';
+      const ext = (name.lastIndexOf('.') >= 0) ? name.substring(name.lastIndexOf('.')) : '';
+      const seq = (files.length > 1) ? ('_' + (i + 1)) : '';
+      DriveApp.getFileById(f.id).setName(no + '_' + t + '_' + a + seq + ext);
+    } catch (err) { /* 單檔改名失敗則略過，不影響報名 */ }
+  }
+}
 
 function getSheet_(name, headers) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
