@@ -58,14 +58,6 @@
   .hb-track{height:14px;border-radius:999px;background:var(--teal-light);overflow:hidden}
   .hb-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--teal),var(--coral));transition:width .6s ease;min-width:2px}
 
-  /* vertical bars (timeline) */
-  .vbars{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:10px;overflow-x:auto}
-  .vbar{flex:1 0 26px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:26px}
-  .vbar .vb-track{flex:1;width:100%;display:flex;align-items:flex-end}
-  .vbar .vb-fill{width:100%;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--coral),var(--teal));transition:height .6s ease;min-height:3px}
-  .vbar .vb-cnt{font-size:.8rem;font-weight:800;color:var(--teal-dark)}
-  .vbar .vb-lbl{font-size:.68rem;color:var(--muted);white-space:nowrap;transform:rotate(-45deg);transform-origin:center;height:34px}
-
   .ai-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px}
   .ai-card{flex:1 1 180px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .ai-card .t{font-size:.86rem;color:var(--muted);font-weight:600}
@@ -126,16 +118,6 @@
       </div>`).join('');
   }
 
-  function vbars(items){
-    const max=Math.max(1,...items.map(i=>i.count));
-    return `<div class="vbars">`+items.map(i=>`
-      <div class="vbar" title="${esc(i.date)}：${i.count} 筆">
-        <div class="vb-cnt">${i.count}</div>
-        <div class="vb-track"><div class="vb-fill" style="height:${(i.count/max*100).toFixed(1)}%"></div></div>
-        <div class="vb-lbl">${esc(i.date.slice(5))}</div>
-      </div>`).join('')+`</div>`;
-  }
-
   function render(d){
     const c=d.categories||{}; const v=c.v||{count:0,ai:0}, p=c.p||{count:0,ai:0}, w=c.w||{count:0,ai:0};
     const dl=daysLeft(d.deadline);
@@ -146,7 +128,6 @@
       {name:'📖 '+(w.name||'醫療人文敘事醫學徵文'), count:w.count}
     ];
     const units=(d.byUnit||[]).slice(0,12);
-    const dates=d.byDate||[];
 
     content.innerHTML=`
       <div class="kpis">
@@ -157,13 +138,12 @@
         <div class="kpi deadline"><div class="label">⏳ 距截稿</div><div class="num">${dlText}</div></div>
       </div>
 
-      <div class="panel">
-        <h2>📊 各類別投稿件數</h2>
-        <div class="hint">一人報多類會分別計入各類別；總筆數以報名人次（總表）計。</div>
-        ${catItems.some(i=>i.count>0)? hbars(catItems,'name','count') : '<div class="empty">目前尚無報名資料。</div>'}
-      </div>
-
       <div class="grid">
+        <div class="panel">
+          <h2>📊 各類別投稿件數</h2>
+          <div class="hint">一人報多類會分別計入各類別；總筆數以報名人次（總表）計。</div>
+          ${catItems.some(i=>i.count>0)? hbars(catItems,'name','count') : '<div class="empty">目前尚無報名資料。</div>'}
+        </div>
         <div class="panel">
           <h2>🤖 AI 協作件數</h2>
           <div class="hint">影像類（短影音／攝影）以 AI 協助製作之件數，另列特別獎評選。</div>
@@ -172,17 +152,12 @@
             <div class="ai-card"><div class="t">📷 攝影 AI 協作</div><div class="b">${p.ai}</div><small>／ ${p.count} 件</small></div>
           </div>
         </div>
-        <div class="panel">
-          <h2>🏢 報名單位分佈（前 12）</h2>
-          <div class="hint">依總表「服務單位」彙整。</div>
-          ${units.length? hbars(units,'unit','count') : '<div class="empty">目前尚無報名資料。</div>'}
-        </div>
       </div>
 
       <div class="panel">
-        <h2>📅 每日報名趨勢</h2>
-        <div class="hint">依報名時間戳記彙整（每日筆數）。</div>
-        ${dates.length? vbars(dates) : '<div class="empty">目前尚無報名資料。</div>'}
+        <h2>🏢 報名單位分佈（前 12）</h2>
+        <div class="hint">依總表「服務單位」彙整。</div>
+        ${units.length? hbars(units,'unit','count') : '<div class="empty">目前尚無報名資料。</div>'}
       </div>
     `;
     document.getElementById('updated').textContent='更新時間：'+(d.generatedAt||'-');
