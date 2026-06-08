@@ -51,14 +51,77 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'initUpload') return json_(initUpload_(data));
     if (data.action === 'resolveFile') return json_(resolveFile_(data));
+    if (data.action === 'stats') return json_(stats_());
     return json_(register_(data));
   } catch (err) {
     return json_({ result: 'error', message: String(err && err.message ? err.message : err) });
   }
 }
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'stats') return json_(stats_());
   return json_({ result: 'ok', message: '2026 敘事醫學競賽報名 API 運作中' });
+}
+
+// ===================== 報名現況統計（僅彙整數字，不含個資） =====================
+
+function stats_() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const tz = Session.getScriptTimeZone();
+
+  // 各類別件數與 AI 協作數
+  const cats = {};
+  ['v', 'p', 'w'].forEach(function (k) {
+    const sheet = ss.getSheetByName(CAT_TABS[k]);
+    let count = 0, ai = 0;
+    if (sheet) {
+      count = Math.max(0, sheet.getLastRow() - 1);
+      if (k !== 'w' && count > 0) {
+        const aiCol = CAT_HEADERS[k].indexOf('AI協作') + 1;
+        if (aiCol > 0) {
+          const vals = sheet.getRange(2, aiCol, count, 1).getValues();
+          ai = vals.filter(function (r) { return String(r[0]).trim() === '是'; }).length;
+        }
+      }
+    }
+    cats[k] = { name: CAT_NAME[k], count: count, ai: ai };
+  });
+
+  // 總表彙整：總筆數、依單位、依日期（不含姓名/電話/E-mail）
+  const master = ss.getSheetByName(MASTER_SHEET);
+  let total = 0;
+  const byUnitMap = {}, byDateMap = {};
+  if (master) {
+    total = Math.max(0, master.getLastRow() - 1);
+    if (total > 0) {
+      const tsCol = HEADERS.indexOf('時間戳記');
+      const unitCol = HEADERS.indexOf('服務單位');
+      const data = master.getRange(2, 1, total, master.getLastColumn()).getValues();
+      data.forEach(function (row) {
+        const unit = (String(row[unitCol] || '').trim()) || '未填';
+        byUnitMap[unit] = (byUnitMap[unit] || 0) + 1;
+        let dateStr = '';
+        const tsv = row[tsCol];
+        if (tsv instanceof Date) dateStr = Utilities.formatDate(tsv, tz, 'yyyy-MM-dd');
+        else dateStr = String(tsv || '').substring(0, 10);
+        if (dateStr) byDateMap[dateStr] = (byDateMap[dateStr] || 0) + 1;
+      });
+    }
+  }
+  const byUnit = Object.keys(byUnitMap).map(function (u) { return { unit: u, count: byUnitMap[u] }; })
+    .sort(function (a, b) { return b.count - a.count; });
+  const byDate = Object.keys(byDateMap).map(function (d) { return { date: d, count: byDateMap[d] }; })
+    .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+
+  return {
+    result: 'success',
+    generatedAt: Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss'),
+    deadline: '2026-07-15',
+    total: total,
+    categories: cats,
+    byUnit: byUnit,
+    byDate: byDate
+  };
 }
 
 /**

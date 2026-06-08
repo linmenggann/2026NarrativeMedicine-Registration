@@ -5,7 +5,8 @@
 ## 內容
 - [`index.html`](index.html)：單一檔案網頁（報名／投稿、作品上傳、上傳進度條）。
 - [`config.js`](config.js)：前端設定檔，填入後端網址 `APPS_SCRIPT_URL`。
-- [`apps-script/Code.gs`](apps-script/Code.gs)：Google Apps Script 後端，將報名資料寫入 Google Sheets、作品檔案存入 Google 雲端硬碟。
+- [`dashboard.html`](dashboard.html)：報名現況儀表板（彙整統計，不含個資）。直接以網址開啟使用，未連結於報名頁。
+- [`apps-script/Code.gs`](apps-script/Code.gs)：Google Apps Script 後端，將報名資料寫入 Google Sheets、作品檔案存入 Google 雲端硬碟、並提供 `stats` 統計端點。
 - [`apps-script/SETUP.md`](apps-script/SETUP.md)：表頭欄位與部署串接步驟。
 
 ## 串接後端（送出資料 → Google Sheets／雲端硬碟）

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 醫院敘事醫學系列競賽｜報名現況儀表板</title>
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --teal:#0d7d7d; --teal-dark:#075c5c; --teal-light:#e6f4f4;
+    --coral:#e9694a; --coral-light:#fbeae5; --gold:#c79a3c;
+    --ink:#22343a; --muted:#5d7178; --paper:#f3f5f6; --card:#fff; --line:#e4ebec;
+    --shadow:0 10px 30px rgba(13,125,125,.10); --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Noto Sans TC","Microsoft JhengHei",-apple-system,"Segoe UI",sans-serif;
+    color:var(--ink);background:var(--paper);line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+  header.top{background:linear-gradient(135deg,#0d7d7d,#075c5c);color:#fff;padding:26px 0}
+  .top-inner{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .top h1{font-size:clamp(1.2rem,3vw,1.7rem);font-weight:800;letter-spacing:.5px}
+  .top .sub{color:#cdeaea;font-size:.9rem;margin-top:4px}
+  .top .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .updated{font-size:.85rem;color:#cdeaea}
+  .btn{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.4);color:#fff;
+    padding:9px 18px;border-radius:999px;font-weight:700;cursor:pointer;font-size:.9rem;font-family:inherit;transition:.2s}
+  .btn:hover{background:rgba(255,255,255,.28)}
+
+  main{padding:26px 0 60px}
+  .state{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:30px;text-align:center;color:var(--muted);box-shadow:var(--shadow)}
+  .state.err{border-color:var(--coral);color:#9c3c25;background:var(--coral-light)}
+
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+  @media(max-width:880px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){.kpis{grid-template-columns:1fr}}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;
+    box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--teal),var(--coral))}
+  .kpi .label{font-size:.86rem;color:var(--muted);font-weight:600}
+  .kpi .num{font-size:2.2rem;font-weight:900;color:var(--teal-dark);line-height:1.1;margin-top:6px}
+  .kpi .ic{font-size:1.4rem}
+  .kpi.deadline .num{color:var(--coral)}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:880px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:22px 22px 24px;box-shadow:var(--shadow);margin-bottom:18px}
+  .panel h2{font-size:1.05rem;font-weight:800;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .panel .hint{font-size:.8rem;color:var(--muted);margin-bottom:16px}
+
+  /* horizontal bars */
+  .hbar{margin-bottom:14px}
+  .hbar .hb-top{display:flex;justify-content:space-between;font-size:.92rem;font-weight:700;margin-bottom:6px}
+  .hbar .hb-top .cnt{color:var(--teal-dark)}
+  .hb-track{height:14px;border-radius:999px;background:var(--teal-light);overflow:hidden}
+  .hb-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--teal),var(--coral));transition:width .6s ease;min-width:2px}
+
+  /* vertical bars (timeline) */
+  .vbars{display:flex;align-items:flex-end;gap:6px;height:170px;padding-top:10px;overflow-x:auto}
+  .vbar{flex:1 0 26px;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:26px}
+  .vbar .vb-track{flex:1;width:100%;display:flex;align-items:flex-end}
+  .vbar .vb-fill{width:100%;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--coral),var(--teal));transition:height .6s ease;min-height:3px}
+  .vbar .vb-cnt{font-size:.8rem;font-weight:800;color:var(--teal-dark)}
+  .vbar .vb-lbl{font-size:.68rem;color:var(--muted);white-space:nowrap;transform:rotate(-45deg);transform-origin:center;height:34px}
+
+  .ai-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:6px}
+  .ai-card{flex:1 1 180px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .ai-card .t{font-size:.86rem;color:var(--muted);font-weight:600}
+  .ai-card .b{font-size:1.5rem;font-weight:800;color:var(--gold)}
+  .ai-card small{color:var(--muted)}
+
+  .empty{color:var(--muted);font-size:.9rem;padding:10px 0}
+  footer{color:var(--muted);font-size:.82rem;text-align:center;padding:8px 0 0}
+  .note{background:var(--teal-light);border:1px solid var(--teal);color:var(--teal-dark);
+    border-radius:12px;padding:12px 16px;font-size:.84rem;margin-bottom:18px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <div>
+      <h1>📊 報名現況儀表板</h1>
+      <div class="sub">2026『醫院敘事醫學系列競賽活動』・ 奇美醫院 教學部</div>
+    </div>
+    <div class="meta">
+      <span class="updated" id="updated">資料載入中…</span>
+      <button class="btn" id="refresh">🔄 重新整理</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="note">本頁僅顯示<b>彙整統計數字</b>（總筆數、各類別件數、單位與日期分佈），不含姓名、電話、E-mail 等個人資料。完整名單請至 Google 試算表查看。</div>
+
+  <div id="content"><div class="state" id="loading">⏳ 正在讀取報名資料…</div></div>
+
+  <footer id="footer"></footer>
+</main>
+
+<script src="config.js"></script>
+<script>
+  // 解析後端網址（與 index.html 相同：?api= → config.js → localStorage）
+  function resolveApiUrl(){
+    try{ const p=new URLSearchParams(location.search); const v=(p.get('api')||p.get('apps_script_url')||'').trim();
+      if(v){ try{localStorage.setItem('APPS_SCRIPT_URL',v);}catch(_){} return v; } }catch(_){}
+    if(window.APP_CONFIG && (window.APP_CONFIG.APPS_SCRIPT_URL||'').trim()) return window.APP_CONFIG.APPS_SCRIPT_URL.trim();
+    try{ const ls=(localStorage.getItem('APPS_SCRIPT_URL')||'').trim(); if(ls) return ls; }catch(_){}
+    return '';
+  }
+  const API=resolveApiUrl();
+  const content=document.getElementById('content');
+  const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  function daysLeft(deadline){
+    const d=Math.ceil((new Date(deadline+'T23:59:59+08:00')-new Date())/86400000);
+    return d>0? d : (d===0?0:-1);
+  }
+
+  function hbars(items, labelKey, valKey){
+    const max=Math.max(1,...items.map(i=>i[valKey]));
+    return items.map(i=>`
+      <div class="hbar">
+        <div class="hb-top"><span>${esc(i[labelKey])}</span><span class="cnt">${i[valKey]} 件</span></div>
+        <div class="hb-track"><div class="hb-fill" style="width:${(i[valKey]/max*100).toFixed(1)}%"></div></div>
+      </div>`).join('');
+  }
+
+  function vbars(items){
+    const max=Math.max(1,...items.map(i=>i.count));
+    return `<div class="vbars">`+items.map(i=>`
+      <div class="vbar" title="${esc(i.date)}：${i.count} 筆">
+        <div class="vb-cnt">${i.count}</div>
+        <div class="vb-track"><div class="vb-fill" style="height:${(i.count/max*100).toFixed(1)}%"></div></div>
+        <div class="vb-lbl">${esc(i.date.slice(5))}</div>
+      </div>`).join('')+`</div>`;
+  }
+
+  function render(d){
+    const c=d.categories||{}; const v=c.v||{count:0,ai:0}, p=c.p||{count:0,ai:0}, w=c.w||{count:0,ai:0};
+    const dl=daysLeft(d.deadline);
+    const dlText = dl<0?'已截止':(dl===0?'最後一天':dl+' 天');
+    const catItems=[
+      {name:'🎬 '+(v.name||'醫療人文短影音'), count:v.count},
+      {name:'📷 '+(p.name||'醫療人文攝影'), count:p.count},
+      {name:'📖 '+(w.name||'醫療人文敘事醫學徵文'), count:w.count}
+    ];
+    const units=(d.byUnit||[]).slice(0,12);
+    const dates=d.byDate||[];
+
+    content.innerHTML=`
+      <div class="kpis">
+        <div class="kpi"><div class="label">📝 總報名筆數</div><div class="num">${d.total||0}</div></div>
+        <div class="kpi"><div class="label">🎬 短影音</div><div class="num">${v.count}</div></div>
+        <div class="kpi"><div class="label">📷 攝影</div><div class="num">${p.count}</div></div>
+        <div class="kpi"><div class="label">📖 徵文</div><div class="num">${w.count}</div></div>
+        <div class="kpi deadline"><div class="label">⏳ 距截稿</div><div class="num">${dlText}</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>📊 各類別投稿件數</h2>
+        <div class="hint">一人報多類會分別計入各類別；總筆數以報名人次（總表）計。</div>
+        ${catItems.some(i=>i.count>0)? hbars(catItems,'name','count') : '<div class="empty">目前尚無報名資料。</div>'}
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <h2>🤖 AI 協作件數</h2>
+          <div class="hint">影像類（短影音／攝影）以 AI 協助製作之件數，另列特別獎評選。</div>
+          <div class="ai-row">
+            <div class="ai-card"><div class="t">🎬 短影音 AI 協作</div><div class="b">${v.ai}</div><small>／ ${v.count} 件</small></div>
+            <div class="ai-card"><div class="t">📷 攝影 AI 協作</div><div class="b">${p.ai}</div><small>／ ${p.count} 件</small></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>🏢 報名單位分佈（前 12）</h2>
+          <div class="hint">依總表「服務單位」彙整。</div>
+          ${units.length? hbars(units,'unit','count') : '<div class="empty">目前尚無報名資料。</div>'}
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>📅 每日報名趨勢</h2>
+        <div class="hint">依報名時間戳記彙整（每日筆數）。</div>
+        ${dates.length? vbars(dates) : '<div class="empty">目前尚無報名資料。</div>'}
+      </div>
+    `;
+    document.getElementById('updated').textContent='更新時間：'+(d.generatedAt||'-');
+    document.getElementById('footer').textContent='截稿日期：'+(d.deadline||'-')+'　｜　資料來源：Google Sheets「競賽活動報名資料」';
+  }
+
+  async function load(){
+    if(!API){
+      content.innerHTML='<div class="state err">⚠️ 尚未設定後端網址。請於 <b>config.js</b> 填入 APPS_SCRIPT_URL，或在網址加上 <b>?api=你的/exec網址</b>。</div>';
+      return;
+    }
+    content.innerHTML='<div class="state" id="loading">⏳ 正在讀取報名資料…</div>';
+    try{
+      const url=API+(API.indexOf('?')>=0?'&':'?')+'action=stats';
+      const res=await fetch(url,{method:'GET'});
+      const data=await res.json();
+      if(data && data.result==='success') render(data);
+      else throw new Error((data&&data.message)||'資料格式錯誤');
+    }catch(err){
+      content.innerHTML='<div class="state err">⚠️ 讀取失敗：'+esc(err.message||err)+'<br>請確認後端已部署最新版本（含 stats 端點）且存取權限為「所有人」。</div>';
+    }
+  }
+
+  document.getElementById('refresh').addEventListener('click',load);
+  load();
+  setInterval(load, 120000); // 每 2 分鐘自動更新
+</script>
+</body>
+</html>
