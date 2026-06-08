@@ -84,7 +84,7 @@ function stats_() {
         }
       }
     }
-    cats[k] = { name: CAT_NAME[k], count: count, ai: ai };
+    cats[k] = { name: CAT_TABS[k], count: count, ai: ai };
   });
 
   // 總表彙整：總筆數、依單位、依日期（不含姓名/電話/E-mail）
