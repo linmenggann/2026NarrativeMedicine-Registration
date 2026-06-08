@@ -33,9 +33,9 @@ const FOLDERS = {
 
 const HEADERS = [
   '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '參賽類別',
-  '短影音-作品名稱', '短影音-文字說明', '短影音-AI協作', '短影音-AI程式/網站', '短影音-檔案連結',
-  '攝影-作品名稱', '攝影-文字說明', '攝影-AI協作', '攝影-AI程式/網站', '攝影-檔案連結',
-  '徵文-標題', '徵文-簡介', '徵文-檔案連結'
+  '短影音-編號', '短影音-作品名稱', '短影音-文字說明', '短影音-AI協作', '短影音-AI程式/網站', '短影音-檔案連結',
+  '攝影-編號', '攝影-作品名稱', '攝影-文字說明', '攝影-AI協作', '攝影-AI程式/網站', '攝影-檔案連結',
+  '徵文-編號', '徵文-標題', '徵文-簡介', '徵文-檔案連結'
 ];
 
 const CAT_HEADERS = {
@@ -146,22 +146,31 @@ function register_(data) {
                         .filter(String).join('\n');
     });
 
-    // 總表
-    getSheet_(MASTER_SHEET, HEADERS).appendRow([
-      tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
-      (data.categories || []).join('、'),
-      pick_(works, 'v', 'title'), pick_(works, 'v', 'desc'),
-      (works.v && works.v.ai) ? '是' : '', pick_(works, 'v', 'aiName'), links.v,
-      pick_(works, 'p', 'title'), pick_(works, 'p', 'desc'),
-      (works.p && works.p.ai) ? '是' : '', pick_(works, 'p', 'aiName'), links.p,
-      pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
-    ]);
-
-    // 分類別分頁（含自動編號）
+    // 先取得各類別分頁與其即將分配的編號（供總表一併標示，方便交叉對照）
+    const catSheets = {}, nums = { v: '', p: '', w: '' };
     ['v', 'p', 'w'].forEach(function (k) {
       if (!works[k]) return;
       const sheet = getSheet_(CAT_TABS[k], CAT_HEADERS[k]);
-      const num = sheet.getLastRow(); // 表頭已存在，此值＝現有資料列數＋1，即本筆編號（從 1 起）
+      catSheets[k] = sheet;
+      nums[k] = sheet.getLastRow(); // 表頭已存在 → 等於現有資料列數＋1，即本筆編號（從 1 起）
+    });
+
+    // 總表（含各類別編號）
+    getSheet_(MASTER_SHEET, HEADERS).appendRow([
+      tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+      (data.categories || []).join('、'),
+      nums.v, pick_(works, 'v', 'title'), pick_(works, 'v', 'desc'),
+      (works.v && works.v.ai) ? '是' : '', pick_(works, 'v', 'aiName'), links.v,
+      nums.p, pick_(works, 'p', 'title'), pick_(works, 'p', 'desc'),
+      (works.p && works.p.ai) ? '是' : '', pick_(works, 'p', 'aiName'), links.p,
+      nums.w, pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
+    ]);
+
+    // 分類別分頁（含自動編號）＋ 依編號為雲端檔案改名
+    ['v', 'p', 'w'].forEach(function (k) {
+      if (!works[k]) return;
+      const sheet = catSheets[k];
+      const num = nums[k];
       if (k === 'w') {
         sheet.appendRow([
           num, tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
@@ -174,7 +183,7 @@ function register_(data) {
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
         ]);
       }
-      // 依編號為雲端檔案改名：編號_作品名稱(徵文用主題/標題)_投稿者姓名(_序號).副檔名
+      // 編號_作品名稱(徵文用主題/標題)_投稿者姓名(_序號).副檔名
       renameFilesByNo_(works[k].files, num, pick_(works, k, 'title'), data.name);
     });
 
