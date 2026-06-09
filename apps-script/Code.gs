@@ -246,7 +246,7 @@ function register_(data) {
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
         ]);
       }
-      // 編號_作品名稱(徵文用主題/標題)_投稿者姓名(_序號).副檔名
+      // 編號-作品名稱(徵文用主題/標題)-投稿者姓名(-序號).副檔名
       renameFilesByNo_(works[k].files, num, pick_(works, k, 'title'), data.name);
     });
 
@@ -260,7 +260,8 @@ function register_(data) {
 
 /**
  * 依編號為已上傳的雲端檔案改名（改名不會改變檔案連結/ID）。
- * 命名：編號_作品名稱_投稿者姓名(_序號).副檔名（同一筆有多檔時才加序號以避免同名）。
+ * 命名：編號-作品名稱-投稿者姓名(-序號).副檔名（同一筆有多檔時才加序號以避免同名）。
+ * 例：1-醫者仁心-王小明.mp4
  */
 function renameFilesByNo_(files, no, title, applicant) {
   if (!files || !files.length) return;
@@ -273,8 +274,8 @@ function renameFilesByNo_(files, no, title, applicant) {
     try {
       const name = f.name || '';
       const ext = (name.lastIndexOf('.') >= 0) ? name.substring(name.lastIndexOf('.')) : '';
-      const seq = (files.length > 1) ? ('_' + (i + 1)) : '';
-      DriveApp.getFileById(f.id).setName(no + '_' + t + '_' + a + seq + ext);
+      const seq = (files.length > 1) ? ('-' + (i + 1)) : '';
+      DriveApp.getFileById(f.id).setName(no + '-' + t + '-' + a + seq + ext);
     } catch (err) { /* 單檔改名失敗則略過，不影響報名 */ }
   }
 }
