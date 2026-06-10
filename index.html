@@ -553,6 +553,22 @@
           <input type="text" name="name" required placeholder="請輸入姓名">
         </div>
         <div class="fld">
+          <label>人事號 <span class="req">*</span></label>
+          <input type="text" name="empNo" required placeholder="請輸入人事號">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fld">
+          <label>院區 <span class="req">*</span></label>
+          <select name="branch" required>
+            <option value="" selected disabled>請選擇院區</option>
+            <option value="永康院區">永康院區</option>
+            <option value="柳營院區">柳營院區</option>
+            <option value="佳里院區">佳里院區</option>
+            <option value="台南院區">台南院區</option>
+          </select>
+        </div>
+        <div class="fld">
           <label>服務單位 <span class="req">*</span></label>
           <input type="text" name="unit" required placeholder="例：教學部">
         </div>
@@ -931,8 +947,8 @@
     e.preventDefault();
     const f=form;
     const get=n=>(f[n]&&f[n].value||'').trim();
-    if(!get('name')||!get('unit')||!get('phone')||!get('email')){
-      msg.className='msg err'; msg.textContent='⚠️ 請完整填寫姓名、服務單位、聯絡電話與 E-mail。';
+    if(!get('name')||!get('empNo')||!get('branch')||!get('unit')||!get('phone')||!get('email')){
+      msg.className='msg err'; msg.textContent='⚠️ 請完整填寫姓名、人事號、院區、服務單位、聯絡電話與 E-mail。';
       msg.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
     const cats=[];
@@ -1004,7 +1020,8 @@
         };
       }
       const payload={
-        name:get('name'), unit:get('unit'), phone:get('phone'), email:get('email'),
+        name:get('name'), empNo:get('empNo'), branch:get('branch'),
+        unit:get('unit'), phone:get('phone'), email:get('email'),
         categories:cats.map(c=>CAT_FULL[c.k]),
         works
       };

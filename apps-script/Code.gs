@@ -32,16 +32,16 @@ const FOLDERS = {
 };
 
 const HEADERS = [
-  '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '參賽類別',
+  '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '參賽類別',
   '短影音-編號', '短影音-作品名稱', '短影音-文字說明', '短影音-AI協作', '短影音-AI程式/網站', '短影音-檔案連結',
   '攝影-編號', '攝影-作品名稱', '攝影-文字說明', '攝影-AI協作', '攝影-AI程式/網站', '攝影-檔案連結',
   '徵文-編號', '徵文-標題', '徵文-簡介', '徵文-檔案連結'
 ];
 
 const CAT_HEADERS = {
-  v: ['編號', '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
-  p: ['編號', '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
-  w: ['編號', '時間戳記', '投稿者姓名', '服務單位', '聯絡電話/分機', 'E-mail', '標題', '簡介', '檔案連結']
+  v: ['編號', '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
+  p: ['編號', '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
+  w: ['編號', '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '標題', '簡介', '檔案連結']
 };
 
 // ===================== 進入點 =====================
@@ -220,7 +220,8 @@ function register_(data) {
 
     // 總表（含各類別編號）
     getSheet_(MASTER_SHEET, HEADERS).appendRow([
-      tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+      tsStr, data.name || '', data.empNo || '', data.branch || '',
+      data.unit || '', data.phone || '', data.email || '',
       (data.categories || []).join('、'),
       nums.v, pick_(works, 'v', 'title'), pick_(works, 'v', 'desc'),
       (works.v && works.v.ai) ? '是' : '', pick_(works, 'v', 'aiName'), links.v,
@@ -236,12 +237,14 @@ function register_(data) {
       const num = nums[k];
       if (k === 'w') {
         sheet.appendRow([
-          num, tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+          num, tsStr, data.name || '', data.empNo || '', data.branch || '',
+          data.unit || '', data.phone || '', data.email || '',
           pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
         ]);
       } else {
         sheet.appendRow([
-          num, tsStr, data.name || '', data.unit || '', data.phone || '', data.email || '',
+          num, tsStr, data.name || '', data.empNo || '', data.branch || '',
+          data.unit || '', data.phone || '', data.email || '',
           pick_(works, k, 'title'), pick_(works, k, 'desc'),
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
         ]);
