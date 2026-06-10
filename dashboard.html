@@ -146,6 +146,7 @@
       {name:'📖 '+(w.name||'醫療人文敘事醫學徵文'), count:w.count}
     ];
     const units=(d.byUnit||[]).slice(0,12);
+    const branches=d.byBranch||[];
 
     content.innerHTML=`
       <div class="kpis">
@@ -172,10 +173,17 @@
         </div>
       </div>
 
-      <div class="panel">
-        <h2>🏢 報名單位分佈（前 12）</h2>
-        <div class="hint">依總表「服務單位」彙整。</div>
-        ${pie(units,'unit','count',true)}
+      <div class="grid">
+        <div class="panel">
+          <h2>🏥 院區分佈</h2>
+          <div class="hint">依總表「院區」彙整。</div>
+          ${pie(branches,'branch','count',false)}
+        </div>
+        <div class="panel">
+          <h2>🏢 報名單位分佈（前 12）</h2>
+          <div class="hint">依總表「服務單位」彙整。</div>
+          ${pie(units,'unit','count',true)}
+        </div>
       </div>
     `;
     document.getElementById('updated').textContent='更新時間：'+(d.generatedAt||'-');

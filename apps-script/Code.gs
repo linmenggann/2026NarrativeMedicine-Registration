@@ -90,16 +90,21 @@ function stats_() {
   // 總表彙整：總筆數、依單位、依日期（不含姓名/電話/E-mail）
   const master = ss.getSheetByName(MASTER_SHEET);
   let total = 0;
-  const byUnitMap = {}, byDateMap = {};
+  const byUnitMap = {}, byDateMap = {}, byBranchMap = {};
   if (master) {
     total = Math.max(0, master.getLastRow() - 1);
     if (total > 0) {
       const tsCol = HEADERS.indexOf('時間戳記');
       const unitCol = HEADERS.indexOf('服務單位');
+      const branchCol = HEADERS.indexOf('院區');
       const data = master.getRange(2, 1, total, master.getLastColumn()).getValues();
       data.forEach(function (row) {
         const unit = (String(row[unitCol] || '').trim()) || '未填';
         byUnitMap[unit] = (byUnitMap[unit] || 0) + 1;
+        if (branchCol >= 0) {
+          const branch = (String(row[branchCol] || '').trim()) || '未填';
+          byBranchMap[branch] = (byBranchMap[branch] || 0) + 1;
+        }
         let dateStr = '';
         const tsv = row[tsCol];
         if (tsv instanceof Date) dateStr = Utilities.formatDate(tsv, tz, 'yyyy-MM-dd');
@@ -109,6 +114,8 @@ function stats_() {
     }
   }
   const byUnit = Object.keys(byUnitMap).map(function (u) { return { unit: u, count: byUnitMap[u] }; })
+    .sort(function (a, b) { return b.count - a.count; });
+  const byBranch = Object.keys(byBranchMap).map(function (u) { return { branch: u, count: byBranchMap[u] }; })
     .sort(function (a, b) { return b.count - a.count; });
   const byDate = Object.keys(byDateMap).map(function (d) { return { date: d, count: byDateMap[d] }; })
     .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
@@ -120,6 +127,7 @@ function stats_() {
     total: total,
     categories: cats,
     byUnit: byUnit,
+    byBranch: byBranch,
     byDate: byDate
   };
 }
