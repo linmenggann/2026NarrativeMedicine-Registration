@@ -190,12 +190,75 @@
     document.getElementById('footer').textContent='截稿日期：'+(d.deadline||'-');
   }
 
+  // ===== 主要讀取來源：Google Sheets GViz 端點（快、穩定；直接讀總表並於前端彙整）=====
+  const SHEET_ID='1Mh0p8pgsAtkRdTDO7MOjPmr0E3BBsGeb_Q3Jt3M7AKU';
+  const MASTER_SHEET='競賽活動報名資料';
+  const DEADLINE='2026-07-15';
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function nowStr(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; }
+
+  async function fetchGviz(){
+    const url='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/gviz/tq?tqx=out:json&headers=1&sheet='+encodeURIComponent(MASTER_SHEET)+'&_='+Date.now();
+    const res=await fetch(url);
+    if(!res.ok) throw new Error('GViz HTTP '+res.status);
+    const text=await res.text();
+    // 回應包在 google.visualization.Query.setResponse({...}); 內，取出 JSON 本體
+    const start=text.indexOf('{'), end=text.lastIndexOf('}');
+    if(start<0||end<0) throw new Error('GViz 回應格式錯誤');
+    const obj=JSON.parse(text.slice(start,end+1));
+    if(obj.status!=='ok'||!obj.table) throw new Error('GViz 狀態異常');
+    return obj.table;
+  }
+
+  // 將 GViz 總表資料於前端彙整成與後端 stats 相同的結構
+  function aggregate(table){
+    const labels=(table.cols||[]).map(c=>String(c.label||'').trim());
+    const col=name=>labels.indexOf(name);
+    const iBranch=col('院區'), iUnit=col('服務單位');
+    const iV=col('短影音-編號'), iP=col('攝影-編號'), iW=col('徵文-編號');
+    const iVai=col('短影音-AI協作'), iPai=col('攝影-AI協作');
+    const cell=(row,i)=>{ if(i<0) return ''; const c=row.c&&row.c[i]; if(!c) return ''; return String(c.v==null?'':c.v).trim(); };
+
+    const rows=table.rows||[];
+    let vC=0,pC=0,wC=0,vAI=0,pAI=0;
+    const byUnitMap={}, byBranchMap={};
+    rows.forEach(row=>{
+      if(cell(row,iV)!=='') vC++;
+      if(cell(row,iP)!=='') pC++;
+      if(cell(row,iW)!=='') wC++;
+      if(cell(row,iVai)==='是') vAI++;
+      if(cell(row,iPai)==='是') pAI++;
+      const unit=cell(row,iUnit)||'未填'; byUnitMap[unit]=(byUnitMap[unit]||0)+1;
+      if(iBranch>=0){ const b=cell(row,iBranch)||'未填'; byBranchMap[b]=(byBranchMap[b]||0)+1; }
+    });
+    return {
+      result:'success', generatedAt:nowStr(), deadline:DEADLINE, total:rows.length,
+      categories:{
+        v:{name:'醫療人文短影音',count:vC,ai:vAI},
+        p:{name:'醫療人文攝影',count:pC,ai:pAI},
+        w:{name:'醫療人文敘事醫學徵文',count:wC,ai:0}
+      },
+      byUnit:Object.keys(byUnitMap).map(u=>({unit:u,count:byUnitMap[u]})).sort((a,b)=>b.count-a.count),
+      byBranch:Object.keys(byBranchMap).map(b=>({branch:b,count:byBranchMap[b]})).sort((a,b)=>b.count-a.count)
+    };
+  }
+
   async function load(){
+    content.innerHTML='<div class="state" id="loading">⏳ 正在讀取報名資料…</div>';
+    // 1) 主要：GViz 直讀（快）
+    try{
+      const table=await fetchGviz();
+      render(aggregate(table));
+      return;
+    }catch(err){
+      console.warn('[GViz 讀取失敗，改用 Apps Script 備援]', err);
+    }
+    // 2) 備援：Apps Script stats 端點
     if(!API){
-      content.innerHTML='<div class="state err">⚠️ 尚未設定後端網址。請於 <b>config.js</b> 填入 APPS_SCRIPT_URL，或在網址加上 <b>?api=你的/exec網址</b>。</div>';
+      content.innerHTML='<div class="state err">⚠️ 讀取失敗，且未設定備援後端網址（config.js 的 APPS_SCRIPT_URL）。</div>';
       return;
     }
-    content.innerHTML='<div class="state" id="loading">⏳ 正在讀取報名資料…</div>';
     try{
       const url=API+(API.indexOf('?')>=0?'&':'?')+'action=stats';
       const res=await fetch(url,{method:'GET'});
@@ -203,7 +266,7 @@
       if(data && data.result==='success') render(data);
       else throw new Error((data&&data.message)||'資料格式錯誤');
     }catch(err){
-      content.innerHTML='<div class="state err">⚠️ 讀取失敗：'+esc(err.message||err)+'<br>請確認後端已部署最新版本（含 stats 端點）且存取權限為「所有人」。</div>';
+      content.innerHTML='<div class="state err">⚠️ 讀取失敗：'+esc(err.message||err)+'<br>請稍後按「重新整理」再試。</div>';
     }
   }
 
