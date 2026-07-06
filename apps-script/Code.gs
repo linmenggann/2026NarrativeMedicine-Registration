@@ -228,7 +228,7 @@ function register_(data) {
 
     // 總表（含各類別編號）
     getSheet_(MASTER_SHEET, HEADERS).appendRow([
-      tsStr, data.name || '', data.empNo || '', data.branch || '',
+      tsStr, data.name || '', empNoText_(data.empNo), data.branch || '',
       data.unit || '', data.phone || '', data.email || '',
       (data.categories || []).join('、'),
       nums.v, pick_(works, 'v', 'title'), pick_(works, 'v', 'desc'),
@@ -245,13 +245,13 @@ function register_(data) {
       const num = nums[k];
       if (k === 'w') {
         sheet.appendRow([
-          num, tsStr, data.name || '', data.empNo || '', data.branch || '',
+          num, tsStr, data.name || '', empNoText_(data.empNo), data.branch || '',
           data.unit || '', data.phone || '', data.email || '',
           pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
         ]);
       } else {
         sheet.appendRow([
-          num, tsStr, data.name || '', data.empNo || '', data.branch || '',
+          num, tsStr, data.name || '', empNoText_(data.empNo), data.branch || '',
           data.unit || '', data.phone || '', data.email || '',
           pick_(works, k, 'title'), pick_(works, k, 'desc'),
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
@@ -299,8 +299,40 @@ function getSheet_(name, headers) {
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    // 人事號整欄設為純文字，避免如 8607E7 被解讀成科學記號
+    const empIdx = headers.indexOf('人事號');
+    if (empIdx >= 0) sheet.getRange(1, empIdx + 1, sheet.getMaxRows(), 1).setNumberFormat('@');
   }
   return sheet;
+}
+
+/** 人事號以文字寫入（前置單引號，儲存格顯示不含引號），雙重保險防止科學記號轉換 */
+function empNoText_(v) {
+  const s = String(v || '').trim();
+  return s ? ("'" + s) : '';
+}
+
+/**
+ * 【一次性工具】修正既有分頁的人事號欄格式為純文字。
+ * 若總表/分類別分頁在此版之前已建立，請在編輯器手動執行本函式一次，
+ * 讓既有分頁的人事號整欄改為純文字（僅影響之後寫入；已被轉成科學記號的舊值需手動更正）。
+ */
+function fixEmpNoFormat() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const targets = [
+    { name: MASTER_SHEET, headers: HEADERS },
+    { name: CAT_TABS.v, headers: CAT_HEADERS.v },
+    { name: CAT_TABS.p, headers: CAT_HEADERS.p },
+    { name: CAT_TABS.w, headers: CAT_HEADERS.w }
+  ];
+  targets.forEach(function (t) {
+    const sheet = ss.getSheetByName(t.name);
+    if (!sheet) return;
+    const empIdx = t.headers.indexOf('人事號');
+    if (empIdx >= 0) sheet.getRange(1, empIdx + 1, sheet.getMaxRows(), 1).setNumberFormat('@');
+  });
+  Logger.log('人事號欄已設為純文字格式。');
+  return 'OK';
 }
 
 function pick_(works, k, field) {
