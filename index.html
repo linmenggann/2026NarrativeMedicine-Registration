@@ -441,7 +441,7 @@
       <span><b>參賽聲明：</b>參賽作品須為投稿者本人原創，且已取得作品中相關當事人（如被攝者、錄音錄影中可辨識之人員等）之授權或同意。</span>
     </div>
     <div class="highlight-strip">
-      <div class="hs"><span>📅 徵稿日期</span><b>即日起 ～ 115 年 7 月 15 日（三）止</b></div>
+      <div class="hs"><span>📅 徵稿日期</span><b>即日起 ～ 115 年 7 月 31 日（五）止</b></div>
       <div class="hs"><span>📝 投稿方式</span><b>線上填寫報名資料及上傳作品</b></div>
       <a href="#register" class="btn btn-ghost" style="border-color:#fff">前往報名 →</a>
     </div>
@@ -709,7 +709,7 @@
       <div class="deadline-card">
         <div class="lbl">截 稿 倒 數</div>
         <div class="big" id="countdown">—</div>
-        <div class="sm">即日起 ～ 115 年 7 月 15 日（星期三）止</div>
+        <div class="sm">即日起 ～ 115 年 7 月 31 日（星期五）止</div>
       </div>
     </div>
   </div>
@@ -1051,8 +1051,8 @@
     }
   });
 
-  // countdown (deadline 115/07/15 = 2026/07/15)
-  const deadline=new Date('2026-07-15T23:59:59+08:00');
+  // countdown (deadline 115/07/31 = 2026/07/31)
+  const deadline=new Date('2026-07-31T23:59:59+08:00');
   function tick(){
     const d=Math.ceil((deadline-new Date())/86400000);
     const txt = d>0? `還剩 ${d} 天` : (d===0?'最後一天':'已截止');

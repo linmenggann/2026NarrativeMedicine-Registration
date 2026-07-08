@@ -123,7 +123,7 @@ function stats_() {
   return {
     result: 'success',
     generatedAt: Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss'),
-    deadline: '2026-07-15',
+    deadline: '2026-07-31',
     total: total,
     categories: cats,
     byUnit: byUnit,
