@@ -97,13 +97,17 @@ function stats_() {
       const tsCol = HEADERS.indexOf('時間戳記');
       const unitCol = HEADERS.indexOf('服務單位');
       const branchCol = HEADERS.indexOf('院區');
+      const numCols = ['短影音-編號', '攝影-編號', '徵文-編號'].map(function (h) { return HEADERS.indexOf(h); });
       const data = master.getRange(2, 1, total, master.getLastColumn()).getValues();
       data.forEach(function (row) {
+        // 以「件數」統計（一筆報名報多類＝多件）
+        let n = 0;
+        numCols.forEach(function (i) { if (i >= 0 && String(row[i] || '').trim() !== '') n++; });
         const unit = (String(row[unitCol] || '').trim()) || '未填';
-        byUnitMap[unit] = (byUnitMap[unit] || 0) + 1;
+        byUnitMap[unit] = (byUnitMap[unit] || 0) + n;
         if (branchCol >= 0) {
           const branch = (String(row[branchCol] || '').trim()) || '未填';
-          byBranchMap[branch] = (byBranchMap[branch] || 0) + 1;
+          byBranchMap[branch] = (byBranchMap[branch] || 0) + n;
         }
         let dateStr = '';
         const tsv = row[tsCol];

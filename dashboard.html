@@ -150,7 +150,7 @@
 
     content.innerHTML=`
       <div class="kpis">
-        <div class="kpi"><div class="label">📝 總報名筆數</div><div class="num">${d.total||0}</div></div>
+        <div class="kpi"><div class="label">📝 總投稿件數</div><div class="num">${(v.count||0)+(p.count||0)+(w.count||0)}</div></div>
         <div class="kpi"><div class="label">🎬 短影音</div><div class="num">${v.count}</div></div>
         <div class="kpi"><div class="label">📷 攝影</div><div class="num">${p.count}</div></div>
         <div class="kpi"><div class="label">📖 徵文</div><div class="num">${w.count}</div></div>
@@ -160,7 +160,7 @@
       <div class="grid">
         <div class="panel">
           <h2>📊 各類別投稿件數</h2>
-          <div class="hint">一人報多類會分別計入各類別；總筆數以報名人次（總表）計。</div>
+          <div class="hint">以件數統計；一人報多類會分別計入各類別件數。</div>
           ${pie(catItems,'name','count',false)}
         </div>
         <div class="panel">
@@ -176,12 +176,12 @@
       <div class="grid">
         <div class="panel">
           <h2>🏥 院區分佈</h2>
-          <div class="hint">依總表「院區」彙整。</div>
+          <div class="hint">依總表「院區」彙整（以件數計）。</div>
           ${pie(branches,'branch','count',false)}
         </div>
         <div class="panel">
           <h2>🏢 報名單位分佈（前 12）</h2>
-          <div class="hint">依總表「服務單位」彙整。</div>
+          <div class="hint">依總表「服務單位」彙整（以件數計）。</div>
           ${pie(units,'unit','count',true)}
         </div>
       </div>
@@ -224,13 +224,14 @@
     let vC=0,pC=0,wC=0,vAI=0,pAI=0;
     const byUnitMap={}, byBranchMap={};
     rows.forEach(row=>{
-      if(cell(row,iV)!=='') vC++;
-      if(cell(row,iP)!=='') pC++;
-      if(cell(row,iW)!=='') wC++;
+      let n=0; // 本筆報名包含的件數（一筆報多類=多件）
+      if(cell(row,iV)!==''){ vC++; n++; }
+      if(cell(row,iP)!==''){ pC++; n++; }
+      if(cell(row,iW)!==''){ wC++; n++; }
       if(cell(row,iVai)==='是') vAI++;
       if(cell(row,iPai)==='是') pAI++;
-      const unit=cell(row,iUnit)||'未填'; byUnitMap[unit]=(byUnitMap[unit]||0)+1;
-      if(iBranch>=0){ const b=cell(row,iBranch)||'未填'; byBranchMap[b]=(byBranchMap[b]||0)+1; }
+      const unit=cell(row,iUnit)||'未填'; byUnitMap[unit]=(byUnitMap[unit]||0)+n;
+      if(iBranch>=0){ const b=cell(row,iBranch)||'未填'; byBranchMap[b]=(byBranchMap[b]||0)+n; }
     });
     return {
       result:'success', generatedAt:nowStr(), deadline:DEADLINE, total:rows.length,
