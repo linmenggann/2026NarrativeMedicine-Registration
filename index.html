@@ -268,6 +268,14 @@
   .upload-hint{margin-top:22px;background:var(--coral-light);border-radius:14px;padding:18px 22px;
     font-size:.92rem;color:#9c3c25;border:1px solid #f3c9bd}
   .upload-hint b{color:#7d2d18}
+  /* 截止鎖定 */
+  .closed-banner{display:none;background:linear-gradient(135deg,#9c3c25,#7d2d18);color:#fff;
+    border-radius:16px;padding:26px 30px;margin-top:42px;text-align:center;
+    box-shadow:0 14px 34px rgba(156,60,37,.35)}
+  .closed-banner b{font-size:1.35rem;display:block;margin-bottom:8px}
+  .closed-banner p{font-size:.98rem;opacity:.95}
+  body.closed .closed-banner{display:block}
+  body.closed .form-card{pointer-events:none;opacity:.5;filter:grayscale(.3)}
   .msg{margin-top:18px;padding:16px 20px;border-radius:12px;font-weight:700;display:none}
   .msg.ok{display:block;background:var(--teal-light);color:var(--teal-dark);border:1px solid var(--teal)}
   .msg.err{display:block;background:var(--coral-light);color:#9c3c25;border:1px solid var(--coral)}
@@ -545,6 +553,11 @@
     <span class="eyebrow">Registration</span>
     <h2 class="title">📣 線上報名表</h2>
     <p class="lead">線上填寫報名資料及上傳作品，一站完成報名，免另行寄送。</p>
+
+    <div class="closed-banner" id="closedBanner">
+      <b>⛔ 徵稿已截止</b>
+      <p>本活動徵稿期間至 115 年 7 月 31 日（星期五）止，線上報名及作品上傳已關閉。<br>若有疑問請洽教學部　高瑞穗（分機 57110）　E-mail：800740@chimei.org.tw</p>
+    </div>
 
     <form class="form-card" id="regForm" novalidate>
       <div class="row2">
@@ -944,6 +957,11 @@
 
   form.addEventListener('submit',async e=>{
     e.preventDefault();
+    if(isClosed()){
+      lockForm();
+      document.getElementById('closedBanner').scrollIntoView({behavior:'smooth',block:'center'});
+      return;
+    }
     const f=form;
     const get=n=>(f[n]&&f[n].value||'').trim();
     if(!get('name')||!get('empNo')||!get('branch')||!get('unit')||!get('phone')||!get('email')){
@@ -1053,14 +1071,23 @@
 
   // countdown (deadline 115/07/31 = 2026/07/31)
   const deadline=new Date('2026-07-31T23:59:59+08:00');
+  function isClosed(){ return new Date()>deadline; }
+  // 截止後鎖定報名表單：顯示「徵稿已截止」橫幅、停用所有欄位與送出
+  function lockForm(){
+    if(document.body.classList.contains('closed')) return;
+    document.body.classList.add('closed');
+    form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
+    submitBtn.textContent='⛔ 徵稿已截止';
+  }
   function tick(){
     const d=Math.ceil((deadline-new Date())/86400000);
     const txt = d>0? `還剩 ${d} 天` : (d===0?'最後一天':'已截止');
     const big=document.getElementById('countdown'); if(big) big.textContent=txt;
     const hero=document.getElementById('heroCountdown');
     if(hero) hero.textContent = d>0? `${d} 天` : (d===0?'最後一天':'已截止');
+    if(isClosed()) lockForm();
   }
-  tick(); setInterval(tick,3600000);
+  tick(); setInterval(tick,60000);
 
   // scroll reveal
   const io=new IntersectionObserver((entries)=>{
