@@ -295,6 +295,89 @@ function renameFilesByNo_(files, no, title, applicant) {
   }
 }
 
+// ===================== 一次性工具：刪列後重新編號 =====================
+// 分頁有刪除報名列時，在編輯器執行對應函式一次：
+//   重排該分頁「編號」為 1..N（依現有列順序遞補）→ 依新編號重新命名雲端檔案
+//   → 同步總表對應的「類別-編號」欄（以時間戳記＋投稿者姓名比對；
+//     總表中已無對應分頁列者，其編號欄會清空）。
+// 注意：刪列後若不重編，下一筆新報名的編號會與現有最後一筆重複。
+
+function renumberV() { return renumberCategory_('v'); } // 醫療人文短影音
+function renumberP() { return renumberCategory_('p'); } // 醫療人文攝影
+function renumberW() { return renumberCategory_('w'); } // 醫療人文敘事醫學徵文
+
+function renumberCategory_(k) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName(CAT_TABS[k]);
+  if (!sheet) return '找不到分頁：' + CAT_TABS[k];
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return '分頁無資料，毋須重編。';
+
+  const headers = CAT_HEADERS[k];
+  const iNo = headers.indexOf('編號');
+  const iTs = headers.indexOf('時間戳記');
+  const iName = headers.indexOf('投稿者姓名');
+  const iTitle = headers.indexOf(k === 'w' ? '標題' : '作品名稱');
+  const iLinks = headers.indexOf('檔案連結');
+  const tz = Session.getScriptTimeZone();
+  const tsKey = function (v) {
+    return (v instanceof Date) ? Utilities.formatDate(v, tz, 'yyyy-MM-dd HH:mm:ss') : String(v || '').trim();
+  };
+  const clean = function (s) { return String(s || '').replace(/[\\/:*?"<>|]/g, '').trim(); };
+
+  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  const keyToNewNo = {}; // 時間戳記|姓名 → 新編號
+  let renamed = 0, renumbered = 0;
+
+  data.forEach(function (row, idx) {
+    const newNo = idx + 1;
+    keyToNewNo[tsKey(row[iTs]) + '|' + String(row[iName] || '').trim()] = newNo;
+    if (Number(row[iNo]) === newNo) return; // 編號已正確，略過
+    renumbered++;
+    sheet.getRange(idx + 2, iNo + 1).setValue(newNo);
+    // 依新編號重新命名雲端檔案（連結/檔案 ID 不變，僅改顯示名稱）
+    const links = String(row[iLinks] || '').split('\n').map(function (s) { return s.trim(); }).filter(String);
+    const t = clean(row[iTitle]) || '作品';
+    const a = clean(row[iName]) || '匿名';
+    links.forEach(function (url, i) {
+      const m = url.match(/\/d\/([-\w]+)/);
+      if (!m) return;
+      try {
+        const f = DriveApp.getFileById(m[1]);
+        const name = f.getName();
+        const ext = (name.lastIndexOf('.') >= 0) ? name.substring(name.lastIndexOf('.')) : '';
+        const seq = (links.length > 1) ? ('-' + (i + 1)) : '';
+        f.setName(newNo + '-' + t + '-' + a + seq + ext);
+        renamed++;
+      } catch (err) { /* 檔案不存在或無權限則略過 */ }
+    });
+  });
+
+  // 同步總表「類別-編號」欄
+  const numHeader = { v: '短影音-編號', p: '攝影-編號', w: '徵文-編號' }[k];
+  const master = ss.getSheetByName(MASTER_SHEET);
+  let synced = 0, cleared = 0;
+  if (master && master.getLastRow() > 1) {
+    const mTs = HEADERS.indexOf('時間戳記');
+    const mName = HEADERS.indexOf('投稿者姓名');
+    const mNo = HEADERS.indexOf(numHeader);
+    const mData = master.getRange(2, 1, master.getLastRow() - 1, HEADERS.length).getValues();
+    mData.forEach(function (row, idx) {
+      if (String(row[mNo] === 0 ? '0' : (row[mNo] || '')).trim() === '') return; // 未報此類別
+      const key = tsKey(row[mTs]) + '|' + String(row[mName] || '').trim();
+      if (key in keyToNewNo) {
+        if (Number(row[mNo]) !== keyToNewNo[key]) { master.getRange(idx + 2, mNo + 1).setValue(keyToNewNo[key]); synced++; }
+      } else {
+        master.getRange(idx + 2, mNo + 1).setValue(''); cleared++; // 分頁已刪除該筆 → 清空總表編號
+      }
+    });
+  }
+
+  const msg = CAT_TABS[k] + '：重編 ' + renumbered + ' 列、改名 ' + renamed + ' 個檔案、總表同步 ' + synced + ' 筆、清空 ' + cleared + ' 筆（已刪列者）。';
+  Logger.log(msg);
+  return msg;
+}
+
 function getSheet_(name, headers) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   let sheet = ss.getSheetByName(name);
