@@ -1079,13 +1079,28 @@
     form.querySelectorAll('input,textarea,select,button').forEach(el=>el.disabled=true);
     submitBtn.textContent='⛔ 徵稿已截止';
   }
+  // 以台北時區（UTC+8）的「日曆日」相比，不受瀏覽器所在時區影響
+  function tpeDayNo(dt){
+    const t=new Date(dt.getTime()+8*3600000); // 位移至 UTC+8 後以 UTC 取值
+    return Math.floor(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate())/86400000);
+  }
+  const deadlineDayNo=tpeDayNo(deadline);
+  function daysLeft(){ return deadlineDayNo-tpeDayNo(new Date()); } // >0 尚餘天數；0 截止當日；<0 已過
+
   function tick(){
-    const d=Math.ceil((deadline-new Date())/86400000);
-    const txt = d>0? `還剩 ${d} 天` : (d===0?'最後一天':'已截止');
-    const big=document.getElementById('countdown'); if(big) big.textContent=txt;
-    const hero=document.getElementById('heroCountdown');
-    if(hero) hero.textContent = d>0? `${d} 天` : (d===0?'最後一天':'已截止');
-    if(isClosed()) lockForm();
+    const closed=isClosed(), d=daysLeft();
+    let heroTxt, cardHtml;
+    if(closed){                       // 已過截止時刻
+      heroTxt='已截止'; cardHtml='徵稿已截止';
+    }else if(d<=0){                   // 截止當日
+      heroTxt='最後一天';
+      cardHtml='最後一天<span style="display:block;font-size:1rem;font-weight:600;opacity:.95;margin-top:6px">今日 23:59 截止</span>';
+    }else{                            // 截止前
+      heroTxt=`${d} 天`; cardHtml=`還剩 ${d} 天`;
+    }
+    const big=document.getElementById('countdown'); if(big) big.innerHTML=cardHtml;
+    const hero=document.getElementById('heroCountdown'); if(hero) hero.textContent=heroTxt;
+    if(closed) lockForm();
   }
   tick(); setInterval(tick,60000);
 
