@@ -112,9 +112,17 @@
   const content=document.getElementById('content');
   const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-  function daysLeft(deadline){
-    const d=Math.ceil((new Date(deadline+'T23:59:59+08:00')-new Date())/86400000);
-    return d>0? d : (d===0?0:-1);
+  // 與報名頁一致：以台北時區（UTC+8）的「日曆日」相比，不受瀏覽器所在時區影響
+  function tpeDayNo(dt){
+    const t=new Date(dt.getTime()+8*3600000); // 位移至 UTC+8 後以 UTC 取值
+    return Math.floor(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate())/86400000);
+  }
+  // 回傳 KPI 卡的標題與文字：截止前「距截稿／N 天」；截止當日「距截稿／最後一天」；截止後「徵稿狀態／已截止」
+  function deadlineState(deadlineStr){
+    const deadline=new Date(deadlineStr+'T23:59:59+08:00');
+    if(new Date()>deadline) return {label:'⏳ 徵稿狀態', text:'已截止'};
+    const d=tpeDayNo(deadline)-tpeDayNo(new Date());
+    return {label:'⏳ 距截稿', text: d<=0 ? '最後一天' : d+' 天'};
   }
 
   const PALETTE=['#0d7d7d','#e9694a','#c79a3c','#3a86a8','#8a5fb0','#2a9d8f','#e76f51','#457b9d','#bc6c25','#6a994e','#9c6644','#577590'];
@@ -138,8 +146,7 @@
 
   function render(d){
     const c=d.categories||{}; const v=c.v||{count:0,ai:0}, p=c.p||{count:0,ai:0}, w=c.w||{count:0,ai:0};
-    const dl=daysLeft(d.deadline);
-    const dlText = dl<0?'已截止':(dl===0?'最後一天':dl+' 天');
+    const dls=deadlineState(d.deadline);
     const catItems=[
       {name:'🎬 '+(v.name||'醫療人文短影音'), count:v.count},
       {name:'📷 '+(p.name||'醫療人文攝影'), count:p.count},
@@ -154,7 +161,7 @@
         <div class="kpi"><div class="label">🎬 短影音</div><div class="num">${v.count}</div></div>
         <div class="kpi"><div class="label">📷 攝影</div><div class="num">${p.count}</div></div>
         <div class="kpi"><div class="label">📖 徵文</div><div class="num">${w.count}</div></div>
-        <div class="kpi deadline"><div class="label">⏳ 距截稿</div><div class="num">${dlText}</div></div>
+        <div class="kpi deadline"><div class="label">${dls.label}</div><div class="num">${dls.text}</div></div>
       </div>
 
       <div class="grid">

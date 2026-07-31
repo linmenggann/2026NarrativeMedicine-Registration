@@ -720,9 +720,9 @@
         </div>
       </div>
       <div class="deadline-card">
-        <div class="lbl">截 稿 倒 數</div>
+        <div class="lbl" id="deadlineLbl">截 稿 倒 數</div>
         <div class="big" id="countdown">—</div>
-        <div class="sm">即日起 ～ 115 年 7 月 31 日（星期五）止</div>
+        <div class="sm" id="deadlineSub">即日起 ～ 115 年 7 月 31 日（星期五）止</div>
       </div>
     </div>
   </div>
@@ -1089,17 +1089,22 @@
 
   function tick(){
     const closed=isClosed(), d=daysLeft();
-    let heroTxt, cardHtml;
+    let heroTxt, cardHtml, lblTxt, subTxt;
     if(closed){                       // 已過截止時刻
       heroTxt='已截止'; cardHtml='徵稿已截止';
+      lblTxt='徵 稿 狀 態'; subTxt='徵稿期間：115 年 7 月 31 日（五）已結束';
     }else if(d<=0){                   // 截止當日
       heroTxt='最後一天';
       cardHtml='最後一天<span style="display:block;font-size:1rem;font-weight:600;opacity:.95;margin-top:6px">今日 23:59 截止</span>';
+      lblTxt='截 稿 倒 數'; subTxt='即日起 ～ 115 年 7 月 31 日（星期五）止';
     }else{                            // 截止前
       heroTxt=`${d} 天`; cardHtml=`還剩 ${d} 天`;
+      lblTxt='截 稿 倒 數'; subTxt='即日起 ～ 115 年 7 月 31 日（星期五）止';
     }
     const big=document.getElementById('countdown'); if(big) big.innerHTML=cardHtml;
     const hero=document.getElementById('heroCountdown'); if(hero) hero.textContent=heroTxt;
+    const lbl=document.getElementById('deadlineLbl'); if(lbl) lbl.textContent=lblTxt;
+    const sub=document.getElementById('deadlineSub'); if(sub) sub.textContent=subTxt;
     if(closed) lockForm();
   }
   tick(); setInterval(tick,60000);
