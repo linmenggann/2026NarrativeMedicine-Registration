@@ -38,6 +38,9 @@ const HEADERS = [
   '徵文-編號', '徵文-標題', '徵文-簡介', '徵文-檔案連結'
 ];
 
+// 「看起來像數字但必須原樣保存」的文字欄：寫入前先將儲存格設為純文字格式（@）
+const TEXT_HEADERS = ['人事號', '聯絡電話/分機'];
+
 const CAT_HEADERS = {
   v: ['編號', '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
   p: ['編號', '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
@@ -51,6 +54,7 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'initUpload') return json_(initUpload_(data));
     if (data.action === 'resolveFile') return json_(resolveFile_(data));
+    if (data.action === 'checkDuplicate') return json_(checkDuplicate_(data));
     if (data.action === 'stats') return json_(stats_());
     return json_(register_(data));
   } catch (err) {
@@ -221,6 +225,16 @@ function register_(data) {
                         .filter(String).join('\n');
     });
 
+    // 重複報名攔截（人事號 trim + 轉大寫比對；與前端預檢同一套規則）
+    const catKeys = ['v', 'p', 'w'].filter(function (k) { return !!works[k]; });
+    const dupCats = duplicateCats_(data.empNo, catKeys);
+    if (dupCats.length) {
+      return {
+        result: 'error', code: 'DUPLICATE', duplicates: dupCats,
+        message: '人事號 ' + cleanText_(data.empNo) + ' 已於「' + dupCats.join('、') + '」報名過，請勿重複報名。'
+      };
+    }
+
     // 先取得各類別分頁與其即將分配的編號（供總表一併標示，方便交叉對照）
     const catSheets = {}, nums = { v: '', p: '', w: '' };
     ['v', 'p', 'w'].forEach(function (k) {
@@ -231,9 +245,9 @@ function register_(data) {
     });
 
     // 總表（含各類別編號）
-    getSheet_(MASTER_SHEET, HEADERS).appendRow([
-      tsStr, data.name || '', empNoText_(data.empNo), data.branch || '',
-      data.unit || '', data.phone || '', data.email || '',
+    appendRowSafe_(getSheet_(MASTER_SHEET, HEADERS), HEADERS, [
+      tsStr, data.name || '', cleanText_(data.empNo), data.branch || '',
+      data.unit || '', cleanText_(data.phone), data.email || '',
       (data.categories || []).join('、'),
       nums.v, pick_(works, 'v', 'title'), pick_(works, 'v', 'desc'),
       (works.v && works.v.ai) ? '是' : '', pick_(works, 'v', 'aiName'), links.v,
@@ -248,15 +262,15 @@ function register_(data) {
       const sheet = catSheets[k];
       const num = nums[k];
       if (k === 'w') {
-        sheet.appendRow([
-          num, tsStr, data.name || '', empNoText_(data.empNo), data.branch || '',
-          data.unit || '', data.phone || '', data.email || '',
+        appendRowSafe_(sheet, CAT_HEADERS[k], [
+          num, tsStr, data.name || '', cleanText_(data.empNo), data.branch || '',
+          data.unit || '', cleanText_(data.phone), data.email || '',
           pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
         ]);
       } else {
-        sheet.appendRow([
-          num, tsStr, data.name || '', empNoText_(data.empNo), data.branch || '',
-          data.unit || '', data.phone || '', data.email || '',
+        appendRowSafe_(sheet, CAT_HEADERS[k], [
+          num, tsStr, data.name || '', cleanText_(data.empNo), data.branch || '',
+          data.unit || '', cleanText_(data.phone), data.email || '',
           pick_(works, k, 'title'), pick_(works, k, 'desc'),
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
         ]);
@@ -386,40 +400,295 @@ function getSheet_(name, headers) {
     sheet.appendRow(headers);
     sheet.setFrozenRows(1);
     sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-    // 人事號整欄設為純文字，避免如 8607E7 被解讀成科學記號
-    const empIdx = headers.indexOf('人事號');
-    if (empIdx >= 0) sheet.getRange(1, empIdx + 1, sheet.getMaxRows(), 1).setNumberFormat('@');
+    // 文字欄整欄設為純文字，避免如 8607E7 被解讀成科學記號、0 開頭掉 0
+    TEXT_HEADERS.forEach(function (h) {
+      const i = headers.indexOf(h);
+      if (i >= 0) sheet.getRange(1, i + 1, sheet.getMaxRows(), 1).setNumberFormat('@');
+    });
   }
   return sheet;
 }
 
-/** 人事號以文字寫入（前置單引號，儲存格顯示不含引號），雙重保險防止科學記號轉換 */
-function empNoText_(v) {
-  const s = String(v || '').trim();
-  return s ? ("'" + s) : '';
+/** 文字欄清理：去除殘留的前置撇號並 trim（相容舊資料）；寫入時不得加撇號 */
+function cleanText_(v) {
+  return String(v == null ? '' : v).replace(/^'+/, '').trim();
+}
+
+/** 識別碼正規化：清理後轉大寫，供重複報名比對（不分大小寫、忽略前後空白） */
+function normId_(v) {
+  return cleanText_(v).toUpperCase();
 }
 
 /**
- * 【一次性工具】修正既有分頁的人事號欄格式為純文字。
- * 若總表/分類別分頁在此版之前已建立，請在編輯器手動執行本函式一次，
- * 讓既有分頁的人事號整欄改為純文字（僅影響之後寫入；已被轉成科學記號的舊值需手動更正）。
+ * 共用寫入函式：所有含文字欄的列一律經由此函式寫入，不可在別處直接 setValues。
+ * 先把該列的文字欄設為純文字格式（@），再以 setValues 寫入 —— 純文字格式下試算表
+ * 不做型別判讀，8607E7 不會變科學記號、0 開頭不掉 0，因此不需要（也不可）加撇號。
  */
-function fixEmpNoFormat() {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const targets = [
+function appendRowSafe_(sheet, headers, values) {
+  const row = sheet.getLastRow() + 1;
+  TEXT_HEADERS.forEach(function (h) {
+    const i = headers.indexOf(h);
+    if (i >= 0) sheet.getRange(row, i + 1).setNumberFormat('@');
+  });
+  sheet.getRange(row, 1, 1, values.length).setValues([values]);
+  return row;
+}
+
+/** 取得某類別分頁已報名的人事號集合（正規化後） */
+function existingEmpNos_(k) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(CAT_TABS[k]);
+  const set = {};
+  if (!sheet || sheet.getLastRow() < 2) return set;
+  const i = CAT_HEADERS[k].indexOf('人事號');
+  if (i < 0) return set;
+  sheet.getRange(2, i + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
+    const id = normId_(r[0]);
+    if (id) set[id] = true;
+  });
+  return set;
+}
+
+/** 檢查人事號是否已於指定類別報名；回傳重複的類別名稱陣列 */
+function duplicateCats_(empNo, catKeys) {
+  const id = normId_(empNo);
+  const dup = [];
+  if (!id) return dup;
+  (catKeys || []).forEach(function (k) {
+    if (CAT_TABS[k] && existingEmpNos_(k)[id]) dup.push(CAT_TABS[k]);
+  });
+  return dup;
+}
+
+/** 前端送出前的重複報名預檢（避免大檔案白上傳） */
+function checkDuplicate_(data) {
+  return { result: 'success', duplicates: duplicateCats_(data.empNo, data.categoryKeys || []) };
+}
+
+/** 四個分頁與其表頭（修復／診斷／匯出共用） */
+function allTargets_() {
+  return [
     { name: MASTER_SHEET, headers: HEADERS },
     { name: CAT_TABS.v, headers: CAT_HEADERS.v },
     { name: CAT_TABS.p, headers: CAT_HEADERS.p },
     { name: CAT_TABS.w, headers: CAT_HEADERS.w }
   ];
-  targets.forEach(function (t) {
+}
+
+/**
+ * 【修復】把既有資料的文字欄（人事號、聯絡電話/分機）無條件整欄重寫。
+ * clearFormat() → 設 @ → 寫回清理過的值。必須無條件重寫，不可只挑「值開頭是撇號」的儲存格，
+ * 因為撇號可能是儲存格的文字標記（值讀起來乾淨，只出現在公式列與畫面），以值判斷會什麼都不做。
+ * 可重複執行。選單函式只要儲存即可執行，不必重新部署。
+ */
+function repairTextColumns() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const done = [];
+  allTargets_().forEach(function (t) {
     const sheet = ss.getSheetByName(t.name);
     if (!sheet) return;
-    const empIdx = t.headers.indexOf('人事號');
-    if (empIdx >= 0) sheet.getRange(1, empIdx + 1, sheet.getMaxRows(), 1).setNumberFormat('@');
+    TEXT_HEADERS.forEach(function (h) {
+      const i = t.headers.indexOf(h);
+      if (i < 0) return;
+      const last = sheet.getLastRow();
+      const col = sheet.getRange(1, i + 1, sheet.getMaxRows(), 1);
+      col.clearFormat();                 // 清掉殘留的文字標記／格式
+      col.setNumberFormat('@');          // 再設為純文字
+      if (last >= 2) {                   // 無條件整欄重寫（不挑撇號開頭）
+        const rng = sheet.getRange(2, i + 1, last - 1, 1);
+        rng.setValues(rng.getValues().map(function (r) { return [cleanText_(r[0])]; }));
+      }
+      sheet.getRange(1, i + 1).setFontWeight('bold'); // 還原表頭樣式
+      done.push(t.name + '／' + h);
+    });
   });
-  Logger.log('人事號欄已設為純文字格式。');
-  return 'OK';
+  const msg = '已修復文字欄（整欄重寫）：' + (done.join('，') || '（無符合分頁）');
+  Logger.log(msg);
+  try { SpreadsheetApp.getUi().alert(msg); } catch (ignore) {}
+  return msg;
+}
+
+/**
+ * 【診斷】列出文字欄的 getValue / getDisplayValue / getFormula / getNumberFormat，
+ * 用來判斷撇號究竟在值裡，還是只是儲存格的文字標記。
+ */
+function diagnoseTextColumns() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const out = [];
+  allTargets_().forEach(function (t) {
+    const sheet = ss.getSheetByName(t.name);
+    if (!sheet || sheet.getLastRow() < 2) return;
+    TEXT_HEADERS.forEach(function (h) {
+      const i = t.headers.indexOf(h);
+      if (i < 0) return;
+      const n = Math.min(sheet.getLastRow() - 1, 10);
+      for (let r = 2; r < 2 + n; r++) {
+        const c = sheet.getRange(r, i + 1);
+        out.push([
+          t.name + '／' + h + ' R' + r,
+          'value=' + JSON.stringify(c.getValue()),
+          'type=' + (typeof c.getValue()),
+          'display=' + JSON.stringify(c.getDisplayValue()),
+          'formula=' + JSON.stringify(c.getFormula()),
+          'format=' + JSON.stringify(c.getNumberFormat())
+        ].join(' | '));
+      }
+    });
+  });
+  const msg = out.length ? out.join('\n') : '（無資料可診斷）';
+  Logger.log(msg);
+  return msg;
+}
+
+// ===================== 匯出（給人看或匯入其他系統） =====================
+
+/** 讀出四個分頁的資料（以顯示值為準，文字欄一律清理為乾淨字串） */
+function exportData_() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const out = [];
+  allTargets_().forEach(function (t) {
+    const sheet = ss.getSheetByName(t.name);
+    if (!sheet || sheet.getLastRow() < 1) return;
+    const values = sheet.getRange(1, 1, sheet.getLastRow(), t.headers.length).getDisplayValues();
+    const textIdx = TEXT_HEADERS
+      .map(function (h) { return t.headers.indexOf(h); })
+      .filter(function (i) { return i >= 0; });
+    values.forEach(function (row, ri) {
+      if (ri === 0) return;
+      textIdx.forEach(function (i) { row[i] = cleanText_(row[i]); });
+    });
+    out.push({ name: t.name, headers: t.headers, textIdx: textIdx, rows: values });
+  });
+  return out;
+}
+
+/**
+ * 【匯出 .xlsx】每格以文字型別（inlineStr）寫入。
+ * Excel 開啟即為文字，沒有撇號、不會被轉成科學記號，匯入其他系統讀到的也是乾淨原值。
+ */
+function exportXlsx() {
+  const data = exportData_();
+  if (!data.length) return '無資料可匯出';
+  const esc = function (v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+  const colName = function (n) {
+    let r = '';
+    while (n > 0) { const m = (n - 1) % 26; r = String.fromCharCode(65 + m) + r; n = Math.floor((n - 1) / 26); }
+    return r;
+  };
+  const files = [];
+  let sheetsXml = '', relsXml = '', overrides = '';
+
+  data.forEach(function (sd, idx) {
+    const id = idx + 1;
+    let rowsXml = '';
+    sd.rows.forEach(function (row, ri) {
+      let cells = '';
+      row.forEach(function (v, ci) {
+        cells += '<c r="' + colName(ci + 1) + (ri + 1) + '" t="inlineStr">' +
+                 '<is><t xml:space="preserve">' + esc(v) + '</t></is></c>';
+      });
+      rowsXml += '<row r="' + (ri + 1) + '">' + cells + '</row>';
+    });
+    files.push(Utilities.newBlob(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetData>' + rowsXml + '</sheetData></worksheet>',
+      'application/xml', 'xl/worksheets/sheet' + id + '.xml'));
+
+    const safeName = String(sd.name).replace(/[\\\/\*\?\[\]:]/g, '').substring(0, 31);
+    sheetsXml += '<sheet name="' + esc(safeName) + '" sheetId="' + id + '" r:id="rId' + id + '"/>';
+    relsXml += '<Relationship Id="rId' + id + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + id + '.xml"/>';
+    overrides += '<Override PartName="/xl/worksheets/sheet' + id + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+  });
+
+  files.push(Utilities.newBlob(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+    overrides + '</Types>', 'application/xml', '[Content_Types].xml'));
+
+  files.push(Utilities.newBlob(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>', 'application/xml', '_rels/.rels'));
+
+  files.push(Utilities.newBlob(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+    'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+    '<sheets>' + sheetsXml + '</sheets></workbook>', 'application/xml', 'xl/workbook.xml'));
+
+  files.push(Utilities.newBlob(
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    relsXml + '</Relationships>', 'application/xml', 'xl/_rels/workbook.xml.rels'));
+
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+  const blob = Utilities.zip(files, '報名資料_' + stamp + '.xlsx')
+    .setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const file = DriveApp.createFile(blob);
+  const msg = '已匯出 Excel：' + file.getName() + '\n' + file.getUrl();
+  Logger.log(msg);
+  try { SpreadsheetApp.getUi().alert(msg); } catch (ignore) {}
+  return file.getUrl();
+}
+
+/**
+ * 【匯出 CSV】識別碼欄輸出 ="值"；其他欄位值像數字／科學記號／0 開頭／日期時同樣處理；
+ * 以 =、+、-、@ 開頭的值加前置撇號防公式注入；檔頭加 UTF-8 BOM。
+ * 注意：="值" 只適合用 Excel 開啟；要餵給其他系統或程式讀取請改用 .xlsx。
+ */
+function exportCsv() {
+  const data = exportData_();
+  if (!data.length) return '無資料可匯出';
+
+  const looksConvertible = function (s) {
+    return /^[0-9]+([.,][0-9]+)?$/.test(s) ||               // 純數字
+           /^[0-9.]+[eE][+-]?[0-9]+$/.test(s) ||            // 科學記號（如 8607E7）
+           /^0[0-9]+$/.test(s) ||                           // 0 開頭
+           /^\d{1,4}[-\/]\d{1,2}[-\/]\d{1,4}/.test(s);      // 日期
+  };
+  const field = function (raw, forceText) {
+    let v = cleanText_(raw);
+    if (/^[=+\-@]/.test(v)) v = "'" + v;                    // 公式注入防護
+    if (v !== '' && (forceText || looksConvertible(v))) v = '="' + v.replace(/"/g, '""') + '"';
+    return '"' + v.replace(/"/g, '""') + '"';
+  };
+
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd_HHmmss');
+  const urls = [];
+  data.forEach(function (sd) {
+    const lines = sd.rows.map(function (row, ri) {
+      return row.map(function (v, ci) {
+        return ri === 0
+          ? '"' + String(v).replace(/"/g, '""') + '"'
+          : field(v, sd.textIdx.indexOf(ci) >= 0);
+      }).join(',');
+    });
+    const csv = '﻿' + lines.join('\r\n');
+    const blob = Utilities.newBlob('', 'text/csv', sd.name + '_' + stamp + '.csv')
+      .setDataFromString(csv, 'UTF-8');
+    urls.push(DriveApp.createFile(blob).getUrl());
+  });
+  const msg = '已匯出 CSV（' + urls.length + ' 個檔案）：\n' + urls.join('\n');
+  Logger.log(msg);
+  try { SpreadsheetApp.getUi().alert(msg); } catch (ignore) {}
+  return urls;
+}
+
+/** 試算表選單（儲存後重新整理試算表即出現；選單函式不需重新部署） */
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('報名資料工具')
+    .addItem('修復文字欄（人事號／電話）', 'repairTextColumns')
+    .addItem('診斷文字欄', 'diagnoseTextColumns')
+    .addSeparator()
+    .addItem('匯出 Excel (.xlsx)', 'exportXlsx')
+    .addItem('匯出 CSV', 'exportCsv')
+    .addToUi();
 }
 
 function pick_(works, k, field) {

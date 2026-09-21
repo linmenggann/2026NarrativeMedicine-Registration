@@ -567,7 +567,8 @@
         </div>
         <div class="fld">
           <label>人事號 <span class="req">*</span></label>
-          <input type="text" name="empNo" required placeholder="請輸入人事號">
+          <input type="text" name="empNo" required placeholder="例：910632 或 B20715"
+                 inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false">
         </div>
       </div>
       <div class="row2">
@@ -588,7 +589,8 @@
       <div class="row2">
         <div class="fld">
           <label>聯絡電話 / 分機 <span class="req">*</span></label>
-          <input type="tel" name="phone" required placeholder="例：分機 57110">
+          <input type="text" name="phone" required placeholder="例：分機 57110"
+                 inputmode="text" autocorrect="off" spellcheck="false">
         </div>
         <div class="fld">
           <label>E-mail <span class="req">*</span></label>
@@ -998,6 +1000,15 @@
     msg.scrollIntoView({behavior:'smooth',block:'center'});
 
     try{
+      // 0) 重複報名預檢（上傳前先擋，避免大檔案白上傳）；後端寫入時會再驗一次
+      setProgress(0,'檢查報名資格…',true);
+      const chk=await callBackend({action:'checkDuplicate', empNo:get('empNo'), categoryKeys:cats.map(c=>c.k)}, 60000);
+      if(chk && chk.result==='success' && chk.duplicates && chk.duplicates.length){
+        hideProgress();
+        msg.className='msg err';
+        msg.innerHTML='⚠️ <b>此人事號已報名過</b>：人事號 <b>'+get('empNo')+'</b> 已於「'+chk.duplicates.join('、')+'」報名，請勿重複報名。<br>若需修改已送出的報名資料，請聯絡承辦人：教學部　高瑞穗（分機 <b>57110</b>）　E-mail：<a href="mailto:800740@chimei.org.tw">800740@chimei.org.tw</a>。';
+        return;
+      }
       // 1) 逐一將作品檔案「直接上傳到 Google Drive」（可續傳，支援大檔案），收集檔案連結
       let grandTotal=0; cats.forEach(c=>(stores[c.k]||[]).forEach(file=>{ grandTotal+=file.size; })); grandTotal=grandTotal||1;
       let uploadedBase=0;
@@ -1050,6 +1061,11 @@
         msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，我們已收到您的報名資料及 <b>${totalFiles}</b> 個作品檔案。後續結果將另行通知，感謝您的參與！`;
         resetForm();
         setTimeout(hideProgress,1200);
+      }else if(out && out.code==='DUPLICATE'){
+        hideProgress();
+        msg.className='msg err';
+        msg.innerHTML='⚠️ <b>此人事號已報名過</b>：'+(out.message||'請勿重複報名。')+'<br>若需修改已送出的報名資料，請聯絡承辦人：教學部　高瑞穗（分機 <b>57110</b>）　E-mail：<a href="mailto:800740@chimei.org.tw">800740@chimei.org.tw</a>。';
+        return;
       }else{
         throw new Error((out&&out.message)||'伺服器處理失敗');
       }
