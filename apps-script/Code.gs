@@ -40,6 +40,13 @@ const HEADERS = [
 
 // 「看起來像數字但必須原樣保存」的文字欄：寫入前先將儲存格設為純文字格式（@）
 const TEXT_HEADERS = ['人事號', '聯絡電話/分機'];
+// 其中屬「識別碼」的欄位，值一律正規化（含轉大寫）後才寫入／比對
+const ID_HEADERS = ['人事號'];
+
+/** 依欄位名稱取得該欄的正規化函式：識別碼轉大寫，其餘文字欄只清理 */
+function normalizerFor_(header) {
+  return ID_HEADERS.indexOf(header) >= 0 ? normId_ : cleanText_;
+}
 
 const CAT_HEADERS = {
   v: ['編號', '時間戳記', '投稿者姓名', '人事號', '院區', '服務單位', '聯絡電話/分機', 'E-mail', '作品名稱', '文字說明', 'AI協作', 'AI程式/網站', '檔案連結'],
@@ -54,7 +61,6 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'initUpload') return json_(initUpload_(data));
     if (data.action === 'resolveFile') return json_(resolveFile_(data));
-    if (data.action === 'checkDuplicate') return json_(checkDuplicate_(data));
     if (data.action === 'stats') return json_(stats_());
     return json_(register_(data));
   } catch (err) {
@@ -225,15 +231,6 @@ function register_(data) {
                         .filter(String).join('\n');
     });
 
-    // 重複報名攔截（人事號 trim + 轉大寫比對；與前端預檢同一套規則）
-    const catKeys = ['v', 'p', 'w'].filter(function (k) { return !!works[k]; });
-    const dupCats = duplicateCats_(data.empNo, catKeys);
-    if (dupCats.length) {
-      return {
-        result: 'error', code: 'DUPLICATE', duplicates: dupCats,
-        message: '人事號 ' + cleanText_(data.empNo) + ' 已於「' + dupCats.join('、') + '」報名過，請勿重複報名。'
-      };
-    }
 
     // 先取得各類別分頁與其即將分配的編號（供總表一併標示，方便交叉對照）
     const catSheets = {}, nums = { v: '', p: '', w: '' };
@@ -246,7 +243,7 @@ function register_(data) {
 
     // 總表（含各類別編號）
     appendRowSafe_(getSheet_(MASTER_SHEET, HEADERS), HEADERS, [
-      tsStr, data.name || '', cleanText_(data.empNo), data.branch || '',
+      tsStr, data.name || '', normId_(data.empNo), data.branch || '',
       data.unit || '', cleanText_(data.phone), data.email || '',
       (data.categories || []).join('、'),
       nums.v, pick_(works, 'v', 'title'), pick_(works, 'v', 'desc'),
@@ -263,13 +260,13 @@ function register_(data) {
       const num = nums[k];
       if (k === 'w') {
         appendRowSafe_(sheet, CAT_HEADERS[k], [
-          num, tsStr, data.name || '', cleanText_(data.empNo), data.branch || '',
+          num, tsStr, data.name || '', normId_(data.empNo), data.branch || '',
           data.unit || '', cleanText_(data.phone), data.email || '',
           pick_(works, 'w', 'title'), pick_(works, 'w', 'desc'), links.w
         ]);
       } else {
         appendRowSafe_(sheet, CAT_HEADERS[k], [
-          num, tsStr, data.name || '', cleanText_(data.empNo), data.branch || '',
+          num, tsStr, data.name || '', normId_(data.empNo), data.branch || '',
           data.unit || '', cleanText_(data.phone), data.email || '',
           pick_(works, k, 'title'), pick_(works, k, 'desc'),
           (works[k] && works[k].ai) ? '是' : '', pick_(works, k, 'aiName'), links[k]
@@ -411,12 +408,17 @@ function getSheet_(name, headers) {
 
 /** 文字欄清理：去除殘留的前置撇號並 trim（相容舊資料）；寫入時不得加撇號 */
 function cleanText_(v) {
-  return String(v == null ? '' : v).replace(/^'+/, '').trim();
+  return String(v == null ? '' : v).replace(/^'/, '').trim();
 }
 
-/** 識別碼正規化：清理後轉大寫，供重複報名比對（不分大小寫、忽略前後空白） */
+/**
+ * 識別碼正規化（前後端共用的唯一規則）：
+ *   String(v).replace(/^'/, '').trim().toUpperCase()
+ * 人事號一律先正規化「再寫入、再比對」，因此存進試算表的就是正規化後的值：
+ *   8607e7 / 「 8607E7 」/ 8607E7 → 一律存成 8607E7
+ */
 function normId_(v) {
-  return cleanText_(v).toUpperCase();
+  return String(v == null ? '' : v).replace(/^'/, '').trim().toUpperCase();
 }
 
 /**
@@ -434,35 +436,6 @@ function appendRowSafe_(sheet, headers, values) {
   return row;
 }
 
-/** 取得某類別分頁已報名的人事號集合（正規化後） */
-function existingEmpNos_(k) {
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(CAT_TABS[k]);
-  const set = {};
-  if (!sheet || sheet.getLastRow() < 2) return set;
-  const i = CAT_HEADERS[k].indexOf('人事號');
-  if (i < 0) return set;
-  sheet.getRange(2, i + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
-    const id = normId_(r[0]);
-    if (id) set[id] = true;
-  });
-  return set;
-}
-
-/** 檢查人事號是否已於指定類別報名；回傳重複的類別名稱陣列 */
-function duplicateCats_(empNo, catKeys) {
-  const id = normId_(empNo);
-  const dup = [];
-  if (!id) return dup;
-  (catKeys || []).forEach(function (k) {
-    if (CAT_TABS[k] && existingEmpNos_(k)[id]) dup.push(CAT_TABS[k]);
-  });
-  return dup;
-}
-
-/** 前端送出前的重複報名預檢（避免大檔案白上傳） */
-function checkDuplicate_(data) {
-  return { result: 'success', duplicates: duplicateCats_(data.empNo, data.categoryKeys || []) };
-}
 
 /** 四個分頁與其表頭（修復／診斷／匯出共用） */
 function allTargets_() {
@@ -495,7 +468,8 @@ function repairTextColumns() {
       col.setNumberFormat('@');          // 再設為純文字
       if (last >= 2) {                   // 無條件整欄重寫（不挑撇號開頭）
         const rng = sheet.getRange(2, i + 1, last - 1, 1);
-        rng.setValues(rng.getValues().map(function (r) { return [cleanText_(r[0])]; }));
+        const norm = normalizerFor_(h);
+        rng.setValues(rng.getValues().map(function (r) { return [norm(r[0])]; }));
       }
       sheet.getRange(1, i + 1).setFontWeight('bold'); // 還原表頭樣式
       done.push(t.name + '／' + h);
@@ -554,7 +528,7 @@ function exportData_() {
       .filter(function (i) { return i >= 0; });
     values.forEach(function (row, ri) {
       if (ri === 0) return;
-      textIdx.forEach(function (i) { row[i] = cleanText_(row[i]); });
+      textIdx.forEach(function (i) { row[i] = normalizerFor_(t.headers[i])(row[i]); });
     });
     out.push({ name: t.name, headers: t.headers, textIdx: textIdx, rows: values });
   });

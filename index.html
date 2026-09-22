@@ -934,6 +934,11 @@
     return null; // 送完但拿不到 meta（最後一塊讀不到回應）→ 交由 resolveFile 取連結
   }
 
+  // 識別碼正規化（與後端 normId_ 同一套規則）：
+  //   String(v).replace(/^'/, '').trim().toUpperCase()
+  // 人事號一律先正規化再送出／寫入，因此 8607e7、「 8607E7 」、8607E7 都會存成 8607E7。
+  function normId(v){ return String(v==null?'':v).replace(/^'/,'').trim().toUpperCase(); }
+
   // 組合易辨識且唯一的檔名：日期時間_姓名_作品名稱(_序號)_隨機碼.副檔名
   // （加隨機碼確保上傳後後端能依檔名精準查回該檔案）
   function composeFileName(applicant, title, origName, idx){
@@ -945,6 +950,10 @@
     const rnd=Math.random().toString(36).slice(2,6);
     return `${stamp}_${clean(applicant)||'匿名'}_${clean(title)||'作品'}${seq}_${rnd}${dot}`;
   }
+
+  // 人事號離開欄位時即時正規化顯示，讓報名者看到實際會存入的值
+  const empNoInput=form.querySelector('input[name="empNo"]');
+  if(empNoInput) empNoInput.addEventListener('blur',()=>{ empNoInput.value=normId(empNoInput.value); });
 
   // 送出成功後清空表單與已上傳檔案
   function resetForm(){
@@ -1000,15 +1009,6 @@
     msg.scrollIntoView({behavior:'smooth',block:'center'});
 
     try{
-      // 0) 重複報名預檢（上傳前先擋，避免大檔案白上傳）；後端寫入時會再驗一次
-      setProgress(0,'檢查報名資格…',true);
-      const chk=await callBackend({action:'checkDuplicate', empNo:get('empNo'), categoryKeys:cats.map(c=>c.k)}, 60000);
-      if(chk && chk.result==='success' && chk.duplicates && chk.duplicates.length){
-        hideProgress();
-        msg.className='msg err';
-        msg.innerHTML='⚠️ <b>此人事號已報名過</b>：人事號 <b>'+get('empNo')+'</b> 已於「'+chk.duplicates.join('、')+'」報名，請勿重複報名。<br>若需修改已送出的報名資料，請聯絡承辦人：教學部　高瑞穗（分機 <b>57110</b>）　E-mail：<a href="mailto:800740@chimei.org.tw">800740@chimei.org.tw</a>。';
-        return;
-      }
       // 1) 逐一將作品檔案「直接上傳到 Google Drive」（可續傳，支援大檔案），收集檔案連結
       let grandTotal=0; cats.forEach(c=>(stores[c.k]||[]).forEach(file=>{ grandTotal+=file.size; })); grandTotal=grandTotal||1;
       let uploadedBase=0;
@@ -1048,7 +1048,7 @@
         };
       }
       const payload={
-        name:get('name'), empNo:get('empNo'), branch:get('branch'),
+        name:get('name'), empNo:normId(get('empNo')), branch:get('branch'),
         unit:get('unit'), phone:get('phone'), email:get('email'),
         categories:cats.map(c=>CAT_FULL[c.k]),
         works
@@ -1061,11 +1061,6 @@
         msg.innerHTML=`✅ <b>報名完成！</b>感謝 ${get('name')} 報名「${cats.map(c=>c.n).join('、')}」，我們已收到您的報名資料及 <b>${totalFiles}</b> 個作品檔案。後續結果將另行通知，感謝您的參與！`;
         resetForm();
         setTimeout(hideProgress,1200);
-      }else if(out && out.code==='DUPLICATE'){
-        hideProgress();
-        msg.className='msg err';
-        msg.innerHTML='⚠️ <b>此人事號已報名過</b>：'+(out.message||'請勿重複報名。')+'<br>若需修改已送出的報名資料，請聯絡承辦人：教學部　高瑞穗（分機 <b>57110</b>）　E-mail：<a href="mailto:800740@chimei.org.tw">800740@chimei.org.tw</a>。';
-        return;
       }else{
         throw new Error((out&&out.message)||'伺服器處理失敗');
       }
